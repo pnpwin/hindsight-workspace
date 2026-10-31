@@ -39,11 +39,12 @@ This is a partial map, **not exhaustive secret detection**. Selected excerpts an
 These native commands install the package from this repository/custom marketplace. They do not configure the shared owner, select the Hermes provider or qualify live memory. An approved clean official Hindsight provider is a separate prerequisite; use a reviewed revision listed in `maintenance/clean_gate.py` rather than an arbitrary latest source.
 
 ```sh
-hermes plugins install pnpwin/hindsight-workspace --ref main --no-enable
+REV="$(git ls-remote https://github.com/pnpwin/hindsight-workspace.git refs/heads/main | cut -f1)"
+hermes plugins install pnpwin/hindsight-workspace --ref "$REV" --no-enable
 hermes plugins validate /absolute/installed/plugin/path --json
 hermes plugins doctor hindsight-workspace --ci
 
-codex plugin marketplace add pnpwin/hindsight-workspace --ref main
+codex plugin marketplace add pnpwin/hindsight-workspace --ref "$REV"
 codex plugin add hindsight-workspace@hindsight-workspace
 codex plugin list --marketplace hindsight-workspace --available --json
 ```
@@ -105,7 +106,7 @@ HINDSIGHT_WORKSPACE_PYTHON="$HERMES_PYTHON" node --test tests/test_codex_transpo
 
 The Python suite covers frozen legacy bank IDs, native provider loading, policy/request parity, SDK metadata, conversation completion/recovery, child lineage, shared process locks, collector privacy, cursor adoption and guarded migration. HTTP/model boundaries are synthetic fixtures. Native marketplace admission/install/readback, security review and the live cross-client matrix are separate gates; unit success does not establish them.
 
-Public CI checks Python/Node syntax and JSON files only; it does not run the host-bound integration suite or activate memory. For reproducible deployments, replace `main` in both installation commands with the same reviewed commit SHA.
+Public CI checks Python/Node syntax and JSON files only; it does not run the host-bound integration suite or activate memory. Hermes requires a full 40-character SHA for `--ref`, not a branch name. Both commands above use one resolved revision; for controlled deployments, set `REV` to an explicitly reviewed commit instead of resolving the moving `main` branch.
 
 ## License and attribution
 
