@@ -1,0 +1,9 @@
+name: hindsight-workspace
+version: "0.3.0"
+description: Shared workspace memory, policy and bounded project ingestion for Hermes and Codex.
+author: Local Hermes integration
+kind: standalone
+python_runtime: external
+requires_hermes: ">=0.22.5"
+provides_hooks:
+  - pre_llm_call

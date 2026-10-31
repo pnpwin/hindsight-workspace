@@ -1,0 +1,82 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/codex/hooks.mjs\"",
+            "timeout": 600,
+            "async": false
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/codex/hooks.mjs\"",
+            "timeout": 600,
+            "async": false
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/codex/hooks.mjs\"",
+            "timeout": 600,
+            "async": false
+          },
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/codex/sync.mjs\"",
+            "timeout": 1200,
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/codex/hooks.mjs\"",
+            "timeout": 600,
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/codex/hooks.mjs\"",
+            "timeout": 600,
+            "async": true
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PLUGIN_ROOT}/codex/hooks.mjs\"",
+            "timeout": 600,
+            "async": false
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "hindsight-workspace",
+  "owner": {
+    "name": "Hindsight Workspace maintainers"
+  },
+  "plugins": [
+    {
+      "name": "hindsight-workspace",
+      "source": "./",
+      "description": "Shared workspace memory, policy and bounded project ingestion for Hermes and Codex."
+    }
+  ]
+}

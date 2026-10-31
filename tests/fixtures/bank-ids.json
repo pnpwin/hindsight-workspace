@@ -1,0 +1,80 @@
+[
+  {
+    "cwd": "$HOME",
+    "explicit": "",
+    "workspace": "home",
+    "bank": "home"
+  },
+  {
+    "cwd": "/srv/team-a/project",
+    "explicit": "",
+    "workspace": "project-737a6f6e20b050e7",
+    "bank": "project-737a6f6e20b050e7"
+  },
+  {
+    "cwd": "/srv/team-b/project",
+    "explicit": "",
+    "workspace": "project-9df292d12a3a75b2",
+    "bank": "project-9df292d12a3a75b2"
+  },
+  {
+    "cwd": "/srv/team-a/project/subdir",
+    "explicit": "",
+    "workspace": "subdir-7588f9b2be7b19ab",
+    "bank": "subdir-7588f9b2be7b19ab"
+  },
+  {
+    "cwd": "C:/Remote/Project",
+    "explicit": "",
+    "workspace": "project-b3857aec2fc10564",
+    "bank": "project-b3857aec2fc10564"
+  },
+  {
+    "cwd": "C:\\Remote\\A\\..\\Project\\",
+    "explicit": "",
+    "workspace": "project-b3857aec2fc10564",
+    "bank": "project-b3857aec2fc10564"
+  },
+  {
+    "cwd": "\\\\SERVER\\Share\\Project",
+    "explicit": "",
+    "workspace": "project-70dc762f177be1a2",
+    "bank": "project-70dc762f177be1a2"
+  },
+  {
+    "cwd": "/srv/./project/../project/",
+    "explicit": "",
+    "workspace": "project-59b2e3aaa7e2b936",
+    "bank": "project-59b2e3aaa7e2b936"
+  },
+  {
+    "cwd": "/srv/документы",
+    "explicit": "",
+    "workspace": "workspace-fa3831960ad41532",
+    "bank": "workspace-fa3831960ad41532"
+  },
+  {
+    "cwd": "/srv/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "explicit": "",
+    "workspace": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-03b94ddabc2fff05",
+    "bank": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-03b94ddabc2fff05"
+  },
+  {
+    "cwd": "/not-present/worktree",
+    "explicit": "",
+    "workspace": "worktree-962edc6e42caf5d9",
+    "bank": "worktree-962edc6e42caf5d9"
+  },
+  {
+    "cwd": "/",
+    "explicit": "",
+    "workspace": "workspace-7f0ddf2501540434",
+    "bank": "workspace-7f0ddf2501540434"
+  },
+  {
+    "cwd": "/srv/project",
+    "explicit": "old--name__bank",
+    "workspace": "old--name__bank",
+    "bank": "old-name_bank"
+  }
+]

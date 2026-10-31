@@ -1,0 +1,31 @@
+name: Static package checks
+on: [push, pull_request, workflow_dispatch]
+# No event text enters shell commands; fork PRs receive read access only.
+permissions:
+  contents: read
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Python syntax and JSON
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          for path in Path('.').rglob('*'):
+              if '.git' in path.parts or not path.is_file():
+                  continue
+              if path.suffix == '.py':
+                  compile(path.read_bytes(), str(path), 'exec')
+              elif path.suffix == '.json':
+                  json.loads(path.read_text())
+          PY
+      - name: Node syntax
+        run: |
+          for file in codex/*.mjs tests/*.mjs; do
+            node --check "$file"
+          done
