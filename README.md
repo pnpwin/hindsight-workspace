@@ -81,7 +81,7 @@ python maintenance/migrate_shared.py /absolute/receipt.json --rollback --clients
 
 Apply and rollback require stopped clients and updaters. Writes are individually atomic, not one global transaction; rollback refuses newer writes. Backups may contain credentials and must stay private. Native managers own plugin payloads; this utility does not roll back databases, services or dependency environments. `adoption.py` verifies legacy cursors before explicit adoption without deleting receipts.
 
-Use `maintenance/clean_gate.py` with the consumer's Python and an explicit consumer roster (`--consumer-config /absolute/path`). It checks approved source, policy, configuration and local bytecode. Unknown or externally redirected caches are refused. Keep payload writers stopped during validation/loading; the check does not protect against concurrent filesystem attackers. Integrating existing updater entrypoints remains a prerequisite for activation.
+Use `maintenance/clean_gate.py` with the consumer's Python and an explicit consumer roster (`--consumer-config /absolute/path`). It checks approved source, policy, configuration and local bytecode. Unknown or externally redirected caches are refused. Cache checks are limited to CPython 3.11–3.15 and 2 MB per file; unsupported formats fail closed. Keep payload writers stopped during validation/loading; the check does not protect against concurrent filesystem attackers. Integrating existing updater entrypoints remains a prerequisite for activation.
 
 ## Tests and compatibility
 

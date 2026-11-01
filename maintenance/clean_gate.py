@@ -45,6 +45,84 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _bytecode_fingerprint(data):
+    """Hash bounded marshal structure without creating executable code objects."""
+    if len(data) > 2_000_000 or not (3, 11) <= sys.version_info[:2] <= (3, 15):
+        raise ValueError('Unsupported bytecode size or code-object layout')
+    position, budget, nodes = 0, 100_000, 0
+    references = []
+
+    def read(size):
+        nonlocal position
+        if size < 0 or size > len(data) - position:
+            raise ValueError('Truncated or oversized bytecode field')
+        result = data[position:position + size]
+        position += size
+        return result
+
+    def integer():
+        return int.from_bytes(read(4), 'little', signed=True)
+
+    def value(depth=0):
+        nonlocal budget, nodes
+        budget -= 1
+        if depth > 100 or budget < 0:
+            raise ValueError('Bytecode structure exceeds bounds')
+        tag = read(1)[0]
+        kind = chr(tag & 127)
+        if kind == 'r':
+            index = integer()
+            if tag & 128 or not 0 <= index < len(references) or references[index] is None:
+                raise ValueError('Invalid or cyclic bytecode reference')
+            return hashlib.sha256(b'r' + references[index].to_bytes(4, 'little')).digest()
+        if tag & 128 and kind in 'NFTS.':
+            raise ValueError('Singletons cannot reserve bytecode references')
+        node = nodes
+        nodes += 1
+        slot = len(references) if tag & 128 else None
+        if slot is not None:
+            references.append(None)
+        if kind in 'NFTS.':
+            payload = b''
+        elif kind in ('i', 'g', 'y'):
+            payload = read({'i': 4, 'g': 8, 'y': 16}[kind])
+        elif kind == 'l':
+            size = read(4)
+            payload = size + read(2 * abs(int.from_bytes(size, 'little', signed=True)))
+        elif kind in 'suatAzZ':
+            size = read(1)[0] if kind in 'zZ' else integer()
+            payload = read(size)
+            if kind in 'aAzZ' and not payload.isascii():
+                raise ValueError('Non-ASCII bytecode string')
+            if kind in 'ut':
+                payload.decode('utf-8', errors='surrogatepass')
+
+        elif kind in '()>':
+            size = read(1)[0] if kind == ')' else integer()
+            if not 0 <= size <= len(data) - position:
+                raise ValueError('Invalid bytecode collection size')
+            children = [value(depth + 1) for _ in range(size)]
+            payload = b''.join(children)
+        elif kind == 'c':
+            # CPython 3.11–3.15: five integers, eight objects, line, two objects.
+            payload = read(20) + b''.join(value(depth + 1) for _ in range(8))
+            payload += read(4) + value(depth + 1) + value(depth + 1)
+        elif kind == ':':
+            payload = b''.join(value(depth + 1) for _ in range(3))
+        else:
+            raise ValueError('Unsupported bytecode value')
+        result = hashlib.sha256(kind.encode('ascii') + payload).digest()
+        if slot is not None:
+            # Preserve alias edges; only unused reference flags/indices may differ.
+            references[slot] = node
+        return result
+
+    result = value()
+    if position != len(data):
+        raise ValueError('Trailing bytecode data')
+    return result
+
+
 def verify_bytecode(root, path):
     source = Path(importlib.util.source_from_cache(str(path)))
     approved = {**UPSTREAM, **UPSTREAM_TESTS}.get(source.relative_to(root).as_posix())
@@ -56,14 +134,12 @@ def verify_bytecode(root, path):
     if optimize is None:
         raise ValueError('Unknown bytecode interpreter or optimization')
     code = compile(source.read_bytes(), filename, 'exec', dont_inherit=True, optimize=optimize)
-    # Match the cache writer's retained code reference and marshal reference flags.
-    retained = (code,)
-    expected = marshal.dumps(retained[0])
-    # Compare serialized known code; never deserialize an untrusted cache.
+    expected = marshal.dumps(code)
+    # Reference encoding varies with object lifetime; compare full structure instead.
     with path.open('rb') as stream:
-        data = stream.read(len(expected) + 17)
+        data = stream.read(2_000_001)
     if (data[:4] != importlib.util.MAGIC_NUMBER or int.from_bytes(data[4:8], 'little') not in (0, 1, 3)
-            or data[16:] != expected):
+            or len(data) > 2_000_000 or _bytecode_fingerprint(data[16:]) != _bytecode_fingerprint(expected)):
         raise ValueError('Unapproved bytecode differs from approved source')
 
 

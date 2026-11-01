@@ -93,6 +93,117 @@ class MaintenanceTests(unittest.TestCase):
                                        optimize=optimize, invalidation_mode=mode)
                     self.assertEqual(self.m.monitor(self.home, self.approved)['status'], 'ok')
 
+    def test_legitimate_cache_survives_reference_lifetime_changes(self):
+        import gc
+        import inspect
+        verify = self.m.verify_bytecode
+        lines, start = inspect.getsourcelines(verify)
+        after_compile = start + next(i for i, line in enumerate(lines) if 'code = compile(' in line) + 1
+        path = py_compile.compile(str(self.provider / 'settings.py'), doraise=True,
+                                  optimize=1, invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH)
+        assert path is not None
+        for collect in (False, True):
+            with self.subTest(collect=collect):
+                fired = []
+                def trace(frame, event, arg):
+                    if frame.f_code is verify.__code__ and event == 'line' and frame.f_lineno >= after_compile and not fired:
+                        fired.append(True)
+                        if collect:
+                            gc.collect()
+                    return trace
+                previous = sys.gettrace()
+                try:
+                    sys.settrace(trace)
+                    try:
+                        verify(self.provider, Path(path))
+                    except ValueError as exc:
+                        self.fail(f'Legitimate cache rejected after reference-lifetime change: {exc}')
+                finally:
+                    sys.settrace(previous)
+                self.assertEqual(fired, [True])
+
+    def test_marshal_references_do_not_change_fingerprint(self):
+        compare = getattr(self.m, '_bytecode_fingerprint', None)
+        assert callable(compare), 'bounded non-executing bytecode comparator missing'
+        plain = b')\x02z\x01xz\x01x'
+        shared = b')\x02\xfa\x01xr\x00\x00\x00\x00'
+        extra_slot = b'\xa9\x02\xfa\x01xr\x01\x00\x00\x00'
+        for left, right in ((shared, extra_slot), (extra_slot, shared), (plain, b'\xa9' + plain[1:])):
+            self.assertEqual(compare(left), compare(right))
+        self.assertNotEqual(compare(plain), compare(b')\x02z\x01xz\x01y'))
+        code = compile("values=(None, True, False, ..., -1208925819614629174706176, 1.25, 2j, b'bytes', 'строка')\ndef outer(x):\n def inner():\n  try: return x in {'a','b'}\n  except Exception: return None\n return inner\n", '<synthetic>', 'exec')
+        with patch.object(self.m.marshal, 'loads', side_effect=AssertionError('Never deserialize unknown cache')):
+            altered = code.replace(co_consts=code.co_consts + ('changed',))
+            self.assertNotEqual(compare(self.m.marshal.dumps(code)), compare(self.m.marshal.dumps(altered)))
+
+    def test_cache_alias_graph_stays_bound(self):
+        # Equal immutable values can still have observable identity differences.
+        plain = b')\x02z\x01xz\x01x'
+        aliased = b')\x02\xfa\x01xr\x00\x00\x00\x00'
+        self.assertNotEqual(self.m._bytecode_fingerprint(plain), self.m._bytecode_fingerprint(aliased))
+
+    def test_malformed_cache_encoding_is_bounded_and_refused(self):
+        compare = getattr(self.m, '_bytecode_fingerprint', None)
+        assert callable(compare), 'bounded non-executing bytecode comparator missing'
+        invalid = [b'', b'Ntrailing', b'r\x00\x00\x00\x00', b'r\xff\xff\xff\xff',
+                   b'\xa9\x01r\x00\x00\x00\x00', b's\xff\xff\xff\xff',
+                   b'u\xff\xff\xff\x7f', b'(\xff\xff\xff\x7f', b'l\x00\x00\x00\x80',
+                   b'{', b')\x01' * 201 + b'N',
+                   b'a\x02\x00\x00\x00\xc3\xa9', b'z\x02\xc3\xa9',
+                   b'u\x01\x00\x00\x00\xff', b't\x02\x00\x00\x00\xc0\x80']
+        invalid += [b')\x02' + bytes([ord(tag) | 128]) + b'r\x00\x00\x00\x00' for tag in 'NFTS.']
+        for data in invalid:
+            with self.subTest(data=data[:20]):
+                with self.assertRaises(ValueError):
+                    compare(data)
+
+    def test_cache_header_trailing_data_and_unknown_optimization_refuse(self):
+        compiled = py_compile.compile(str(self.provider / 'settings.py'), doraise=True)
+        assert compiled is not None
+        path = Path(compiled)
+        data = path.read_bytes()
+        for invalid in (data + b'x', b'BAD!' + data[4:], data[:4] + b'\x02\x00\x00\x00' + data[8:], data[:16] + b'N'):
+            with self.subTest(header=invalid[:16]):
+                path.write_bytes(invalid)
+                with self.assertRaises(ValueError):
+                    self.m.verify_bytecode(self.provider, path)
+        path.write_bytes(data)
+        other = path.with_name(path.stem + '.opt-7.pyc')
+        other.write_bytes(data)
+        with self.assertRaises(ValueError):
+            self.m.verify_bytecode(self.provider, other)
+
+    def test_every_code_field_remains_bound(self):
+        import types
+        code = next(c for c in compile('def f(x): return x + 1', '<synthetic>', 'exec').co_consts
+                    if isinstance(c, types.CodeType))
+        fingerprint = self.m._bytecode_fingerprint
+        baseline = fingerprint(self.m.marshal.dumps(code))
+        changes = {'co_argcount': 0, 'co_posonlyargcount': 1, 'co_stacksize': code.co_stacksize + 1,
+                   'co_flags': code.co_flags ^ 0x100, 'co_code': b'\x09\x00' + code.co_code[2:],
+                   'co_consts': code.co_consts + ('different',), 'co_names': ('different',),
+                   'co_varnames': ('different',), 'co_filename': '<different>', 'co_name': 'different',
+                   'co_qualname': 'different', 'co_firstlineno': code.co_firstlineno + 1,
+                   'co_linetable': b'', 'co_exceptiontable': b'\x00',
+                   'co_freevars': ('different',), 'co_cellvars': ('different',)}
+        for field, value in changes.items():
+            with self.subTest(field=field):
+                self.assertNotEqual(baseline, fingerprint(self.m.marshal.dumps(code.replace(**{field: value}))))
+        changed = code.replace(co_kwonlyargcount=1, co_nlocals=2, co_varnames=('x', 'kw'))
+        self.assertNotEqual(baseline, fingerprint(self.m.marshal.dumps(changed)))
+
+    def test_all_approved_modules_accept_native_cache(self):
+        for name in self.m.UPSTREAM:
+            if not name.endswith('.py'):
+                continue
+            for optimize in (0, 1, 2):
+                with self.subTest(name=name, optimize=optimize):
+                    compiled = py_compile.compile(str(self.provider / name), doraise=True, optimize=optimize,
+                                                  invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH)
+                    assert compiled is not None
+                    self.m.verify_bytecode(self.provider, Path(compiled))
+        self.assertEqual(self.m.monitor(self.home, self.approved)['status'], 'ok')
+
     def test_external_cache_prefix_refuses_uninspected_executable_inputs(self):
         with patch.object(sys, 'pycache_prefix', str(self.home / 'external-cache')):
             with self.assertRaisesRegex(ValueError, 'cache prefix'):
