@@ -14,8 +14,8 @@ class AdoptionTests(unittest.TestCase):
         self.addCleanup(base.doCleanups)
         base.setUp()
         self.base = base
-        self.assertTrue((Path(__file__).resolve().parents[1] / 'adoption.py').exists(), 'safe adoption missing')
-        self.adopt = importlib.import_module('adoption').adopt
+        self.assertTrue((Path(__file__).resolve().parents[1] / 'src/hindsight_workspace/adoption.py').exists(), 'safe adoption missing')
+        self.adopt = importlib.import_module('hindsight_workspace.adoption').adopt
         fixture.w.sync_workspace(base.target)
         self.target = dataclasses.replace(base.target, data_dir=base.root / 'shared')
         self.roots = [base.target.state_root]

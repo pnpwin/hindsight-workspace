@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/codex/hooks.mjs\"",
+            "command": "node \"${PLUGIN_ROOT}/src/hindsight_workspace/codex/hooks.mjs\"",
             "timeout": 600,
             "async": false
           }
@@ -17,7 +17,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/codex/hooks.mjs\"",
+            "command": "node \"${PLUGIN_ROOT}/src/hindsight_workspace/codex/hooks.mjs\"",
             "timeout": 600,
             "async": false
           }
@@ -29,13 +29,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/codex/hooks.mjs\"",
+            "command": "node \"${PLUGIN_ROOT}/src/hindsight_workspace/codex/hooks.mjs\"",
             "timeout": 600,
             "async": false
           },
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/codex/sync.mjs\"",
+            "command": "node \"${PLUGIN_ROOT}/src/hindsight_workspace/codex/sync.mjs\"",
             "timeout": 1200,
             "async": true
           }
@@ -47,7 +47,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/codex/hooks.mjs\"",
+            "command": "node \"${PLUGIN_ROOT}/src/hindsight_workspace/codex/hooks.mjs\"",
             "timeout": 600,
             "async": true
           }
@@ -59,7 +59,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/codex/hooks.mjs\"",
+            "command": "node \"${PLUGIN_ROOT}/src/hindsight_workspace/codex/hooks.mjs\"",
             "timeout": 600,
             "async": true
           }
@@ -71,8 +71,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node \"${PLUGIN_ROOT}/codex/hooks.mjs\"",
-            "timeout": 600,
+            "command": "node \"${PLUGIN_ROOT}/src/hindsight_workspace/codex/hooks.mjs\"",
+            "timeout": 3,
             "async": false
           }
         ]

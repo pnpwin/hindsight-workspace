@@ -26,8 +26,11 @@ UPSTREAM = {
     'pyproject.toml': 'ba9ae36f06f9475c3b70d84e8fced795539ca56b7a592fdf8fc9beddc3236602',
     'plugin.yaml': 'f46da374c184400ed70a12ce61529416134b3575d4bec71364bb4f98bcf5a809',
 }
-REQUIRED = {'__init__.py', 'provider.py', 'policy.py', 'hindsight_workspace.py',
-            'survey_route.py', 'cli.py', 'codex_memory.py', 'plugin.yaml'}
+REQUIRED = {'__init__.py', 'plugin.yaml', *(f'src/hindsight_workspace/{name}' for name in (
+    '__init__.py', 'hermes.py', 'provider.py', 'policy.py', 'hindsight_workspace.py',
+    'survey_route.py', 'cli.py', 'codex_memory.py', 'adoption.py',
+    'maintenance/clean_gate.py', 'maintenance/migrate_shared.py',
+    'codex/hooks.json', 'codex/hooks.mjs', 'codex/launch.mjs', 'codex/mcp.mjs', 'codex/sync.mjs'))}
 UPSTREAM_TESTS = {
     'tests/conftest.py': '80387f0ba25b87b600845bae8d4372595ea3a7a8dcdafc9ba1925a24b1e75857',
     'tests/test_settings.py': '576381d48af1e2c64b275ba827c695182aa4164c5fe2b777326182e64bd399d0',
@@ -179,8 +182,7 @@ def snapshot(home, *, consumers=()):
     if not REQUIRED <= {p.relative_to(adapter).as_posix() for p in files}:
         raise ValueError('Incomplete workspace adapter')
     # Import the already-admitted gate's policy, never an arbitrary installed module.
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-    from policy import load_policy, policy_hash
+    from ..policy import load_policy, policy_hash
     selector = home / 'hindsight-workspace/config.json'
     sha(selector)
     selected = json.loads(selector.read_text())

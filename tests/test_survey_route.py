@@ -15,8 +15,8 @@ from hermes_constants import get_hermes_home, set_hermes_home_override, reset_he
 
 class SurveyRouteTests(unittest.TestCase):
     def setUp(self):
-        self.assertTrue((fixture.ROOT / 'survey_route.py').exists(), 'shared native survey route missing')
-        self.route = importlib.import_module('survey_route')
+        self.assertTrue((fixture.ROOT / 'src/hindsight_workspace/survey_route.py').exists(), 'shared native survey route missing')
+        self.route = importlib.import_module('hindsight_workspace.survey_route')
         temporary = tempfile.TemporaryDirectory(dir=os.environ['TMPDIR'])
         self.addCleanup(temporary.cleanup)
         self.home = Path(temporary.name)
@@ -25,8 +25,9 @@ class SurveyRouteTests(unittest.TestCase):
         self.owner.write_text('{}')
         self.installed = self.home / 'plugins/hindsight-workspace'
         self.installed.mkdir(parents=True)
-        for name in ('__init__.py', 'policy.py', 'provider.py', 'hindsight_workspace.py', 'survey_route.py', 'plugin.yaml'):
+        for name in ('__init__.py', 'plugin.yaml'):
             shutil.copy2(fixture.ROOT / name, self.installed / name)
+        shutil.copytree(fixture.ROOT / 'src', self.installed / 'src')
         self.aux = {'provider': 'openai', 'model': 'synthetic-survey', 'timeout': 300,
                     'extra_body': {'reasoning_effort': 'low'},
                     'fallback_chain': [{'provider': 'openai', 'model': 'synthetic-fallback'}]}

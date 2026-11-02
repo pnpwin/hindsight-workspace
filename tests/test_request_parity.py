@@ -27,9 +27,9 @@ class RequestParityTests(unittest.TestCase):
         upstream = Path(os.environ['HINDSIGHT_UPSTREAM'])
         for name in ('__init__.py', 'settings.py', 'embedded.py', 'setup.py', 'templates.py', 'config_schema.py', 'plugin.yaml', 'pyproject.toml'):
             shutil.copy2(upstream / name, native / name)
-        for name in ('__init__.py', 'policy.py', 'provider.py', 'hindsight_workspace.py', 'plugin.yaml'):
+        for name in ('__init__.py', 'plugin.yaml'):
             shutil.copy2(codex.ROOT / name, wrapper / name)
-        shutil.copytree(codex.ROOT / 'maintenance', wrapper / 'maintenance')
+        shutil.copytree(codex.ROOT / 'src', wrapper / 'src')
         (f.home / 'hindsight-workspace').mkdir()
         (f.home / 'hindsight-workspace/config.json').write_text(json.dumps({'policy_path': str(f.owner)}))
         token = set_hermes_home_override(f.home)

@@ -1,0 +1,47 @@
+name: Tagged release
+on:
+  push:
+    tags:
+      - 'v*'
+# Tag/repository values use quoted env vars; the tag validator runs before publication.
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  checks:
+    uses: ./.github/workflows/check.yml
+  publish:
+    if: github.repository == 'pnpwin/hindsight-workspace'
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate tag identity and reviewed branch
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          python3 -B scripts/check_release.py --tag "$TAG"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git merge-base --is-ancestor HEAD origin/main
+      - name: Publish once and read back exact release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh api --method POST "repos/$GH_REPO/releases" \
+            -f tag_name="$TAG" -f target_commitish="$GITHUB_SHA" -f name="$TAG" \
+            -F draft=false -F prerelease=false -f make_latest=true \
+            -F generate_release_notes=true > release-created.json
+          gh api "repos/$GH_REPO/releases/tags/$TAG" > release-readback.json
+          jq -e --arg tag "$TAG" --arg sha "$GITHUB_SHA" \
+            '.tag_name == $tag and .target_commitish == $sha and .draft == false and .prerelease == false' \
+            release-readback.json

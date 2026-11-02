@@ -54,7 +54,7 @@ def summarize(policy_path, source, *, ctx=None):
                 raise PermissionError('The shared owner has not enabled the native workspace plugin')
             if not loaded.module.__file__:
                 raise ValueError('Native plugin origin is unavailable')
-            origin = Path(loaded.module.__file__).parent / 'survey_route.py'
+            origin = Path(loaded.module.__file__).parent / 'src/hindsight_workspace/survey_route.py'
             if origin.read_bytes() != Path(__file__).read_bytes():
                 raise ValueError('Owner plugin and calling adapter revisions differ')
             # Native discovery owns admission and task registration; use its manifest and trust gate.
@@ -69,12 +69,8 @@ def build_target(policy_path, identity, *, ctx=None, redact=None):
     import json
     from agent.redact import redact_for_egress
     from agent.secret_scope import get_secret
-    if __package__:
-        from .hindsight_workspace import Target
-        from .policy import load_policy, validate_binding
-    else:
-        from hindsight_workspace import Target
-        from policy import load_policy, validate_binding
+    from .hindsight_workspace import Target
+    from .policy import load_policy, validate_binding
     owner = Path(policy_path)
     policy = load_policy(owner)
     def validate():

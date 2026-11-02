@@ -16,7 +16,7 @@ from unittest.mock import patch
 import test_plugin as fixture
 from agent.memory_provider import MemoryProvider
 from hermes_constants import set_hermes_home_override, reset_hermes_home_override
-import policy
+from hindsight_workspace import policy
 
 
 class Delegate(MemoryProvider):
@@ -45,10 +45,10 @@ class Delegate(MemoryProvider):
 
 class ProviderTests(unittest.TestCase):
     def setUp(self):
-        path = fixture.ROOT / 'provider.py'
+        path = fixture.ROOT / 'src/hindsight_workspace/provider.py'
         self.assertTrue(path.exists(), 'workspace provider adapter is missing')
         fixture.load('workspace_adapter_fixture', fixture.ROOT / '__init__.py', True)
-        self.m = fixture.load('workspace_adapter_fixture.provider', path)
+        self.m = fixture.load('workspace_adapter_fixture.src.hindsight_workspace.provider', path)
         tmp = tempfile.TemporaryDirectory(dir=os.environ['TMPDIR'])
         self.addCleanup(tmp.cleanup)
         self.home = Path(tmp.name)

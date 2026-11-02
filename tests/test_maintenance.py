@@ -1,5 +1,5 @@
 """The same clean-source gate serves monitors, manual updates and fleet dispatch."""
-import importlib.util
+import importlib
 import json
 import os
 import py_compile
@@ -16,12 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class MaintenanceTests(unittest.TestCase):
     def setUp(self):
-        path = ROOT / 'maintenance/clean_gate.py'
+        path = ROOT / 'src/hindsight_workspace/maintenance/clean_gate.py'
         self.assertTrue(path.exists(), 'clean maintenance gate missing')
-        spec = importlib.util.spec_from_file_location('clean_gate_probe', path)
-        assert spec is not None and spec.loader is not None
-        self.m = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(self.m)
+        self.m = importlib.import_module('hindsight_workspace.maintenance.clean_gate')
         tmp = tempfile.TemporaryDirectory(dir=os.environ['TMPDIR'])
         self.addCleanup(tmp.cleanup)
         self.home = Path(tmp.name)
@@ -29,8 +26,9 @@ class MaintenanceTests(unittest.TestCase):
         shutil.copytree(Path(os.environ['HINDSIGHT_UPSTREAM']), self.provider)
         self.adapter = self.home / 'plugins/hindsight-workspace'
         self.adapter.mkdir()
-        for name in ('__init__.py', 'provider.py', 'policy.py', 'hindsight_workspace.py', 'survey_route.py', 'cli.py', 'codex_memory.py', 'plugin.yaml'):
+        for name in ('__init__.py', 'plugin.yaml'):
             shutil.copyfile(ROOT / name, self.adapter / name)
+        shutil.copytree(ROOT / 'src', self.adapter / 'src')
         (self.home / 'hindsight').mkdir()
         (self.home / 'hindsight/config.json').write_text('{}')
         (self.home / 'hindsight-workspace').mkdir()
@@ -54,7 +52,7 @@ class MaintenanceTests(unittest.TestCase):
     def test_unknown_pin_source_policy_adapter_and_overlay_refuse_before_publisher(self):
         mutations = [(self.provider / '__init__.py', b'\n# drift'),
                      (self.provider / 'workspace_bank.py', b'legacy'),
-                     (self.adapter / 'provider.py', b'\n# drift'),
+                     (self.adapter / 'src/hindsight_workspace/provider.py', b'\n# drift'),
                      (self.home / 'hindsight/config.json', b' '),
                      (self.home / 'plugins/.install-metadata.json', b' ')]
         for path, suffix in mutations:

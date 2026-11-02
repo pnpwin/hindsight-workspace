@@ -13,7 +13,7 @@ from urllib.error import HTTPError
 from urllib.parse import quote
 import uuid
 
-from hindsight_workspace import Client, DOC_GIT, DOC_SURVEY, atomic_json, workspace_lock
+from .hindsight_workspace import Client, DOC_GIT, DOC_SURVEY, atomic_json, workspace_lock
 
 
 def _read(path):

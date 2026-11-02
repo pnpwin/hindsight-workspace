@@ -9,7 +9,7 @@ import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 try:
-    import hindsight_workspace as w
+    from hindsight_workspace import hindsight_workspace as w
 except ModuleNotFoundError:
     w = None
 
