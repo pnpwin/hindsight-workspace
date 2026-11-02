@@ -1,5 +1,6 @@
 """Real Hermes loader + unpatched upstream; no network or live profile writes."""
 import hashlib
+from contextlib import ExitStack
 import importlib.machinery
 import json
 import os
@@ -10,6 +11,7 @@ import socket
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 import test_plugin as fixture
 import policy
@@ -21,6 +23,12 @@ from agent.memory_manager import MemoryManager
 
 @unittest.skipUnless(os.environ.get('HINDSIGHT_UPSTREAM'), 'set HINDSIGHT_UPSTREAM to a clean official plugin checkout')
 class NativeProviderTests(unittest.TestCase):
+    def test_gateway_context_supplies_omitted_constructor_cwd(self):
+        self.exercise_native(native_context=True)
+
+    def test_gateway_context_guards_explicit_constructor_cwd(self):
+        self.exercise_native(native_context=True, explicit_cwd=True)
+
     def test_native_loader_initializes_adapter_over_clean_upstream(self):
         self.exercise_native()
 
@@ -30,8 +38,12 @@ class NativeProviderTests(unittest.TestCase):
     def test_normal_native_cache_does_not_break_subsequent_guard(self):
         self.exercise_native(create_cache=True)
 
-    def exercise_native(self, *, tampered_cache=False, create_cache=False):
-        with tempfile.TemporaryDirectory(dir=os.environ['TMPDIR']) as directory:
+    def exercise_native(self, *, tampered_cache=False, create_cache=False, native_context=False, explicit_cwd=False):
+        temp_root = Path(os.environ['TMPDIR'])
+        if native_context:
+            temp_root = Path.home() / '.hermes/profiles'
+            temp_root.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=temp_root, prefix='acceptance-') as directory:
             home = Path(directory)
             upstream = Path(os.environ['HINDSIGHT_UPSTREAM'])
             native = home / 'plugins/hindsight'
@@ -61,6 +73,7 @@ class NativeProviderTests(unittest.TestCase):
             (home / 'hindsight-workspace').mkdir()
             (home / 'hindsight-workspace/config.json').write_text(json.dumps({'policy_path': str(owner)}))
             token = set_hermes_home_override(home)
+            scope = ExitStack()
             try:
                 with patch.object(socket.socket, 'connect', side_effect=AssertionError('network forbidden')), patch.object(socket.socket, 'connect_ex', side_effect=AssertionError('network forbidden')):
                     with self.assertNoLogs('plugins.memory', level='WARNING'):
@@ -84,14 +97,57 @@ class NativeProviderTests(unittest.TestCase):
                         return
                     memory = MemoryManager()
                     memory.add_provider(adapter)
-                    memory.initialize_all('synthetic-native-session', cwd='/synthetic/workspace', hermes_home=str(home), agent_identity='default', platform='cli')
+                    cwd = '/synthetic/workspace'
+                    if native_context:
+                        from agent.agent_init import _memory_provider_init_kwargs
+                        from agent.agent_init_params import _GATEWAY_IDENTITY_PARAMS
+                        from gateway.session_context import scoped_session_key
+                        from gateway.session_policy import LocalSessionPolicy, policy_scope
+                        cwd = str(home / 'selected project')
+                        Path(cwd).mkdir()
+                        route = 'agent:main:local:synthetic-native-session'
+                        launch = LocalSessionPolicy(source='desktop', platform='local', cwd=cwd,
+                            model=None, toolsets=(), config_json='{}', request_json='{}',
+                            terminal_json='{"TERMINAL_ENV":"local"}')
+                        scope.enter_context(policy_scope(launch))
+                        scope.enter_context(scoped_session_key(route))
+                        agent = SimpleNamespace(session_id='synthetic-native-session', session_cwd=cwd if explicit_cwd else None,
+                            _session_db=None, _emit_warning=lambda *a: None, _emit_status=lambda *a: None,
+                            **{'_' + key: route if key == 'gateway_session_key' else ''
+                               for key in _GATEWAY_IDENTITY_PARAMS})
+                        kwargs = _memory_provider_init_kwargs(agent, 'cli')
+                        if explicit_cwd:
+                            self.assertEqual(kwargs['cwd'], cwd)
+                        else:
+                            self.assertNotIn('cwd', kwargs, 'native constructor boundary no longer reproduces the defect')
+                        memory.initialize_all(**kwargs)
+                        self.assertEqual(agent.session_cwd, cwd if explicit_cwd else None,
+                                         'adapter must not mutate the Hermes agent')
+                    else:
+                        memory.initialize_all('synthetic-native-session', cwd=cwd, hermes_home=str(home), agent_identity='default', platform='cli')
                     self.assertIs(memory.get_provider('hindsight-workspace'), adapter)
                     identity = adapter.workspace_identity
+                    self.assertIsNotNone(identity, 'native MemoryManager swallowed an initialization refusal')
                     self.assertEqual(adapter._delegate._bank_id, identity['bank'])
-                    self.assertEqual(adapter._delegate._cwd, '/synthetic/workspace')
+                    self.assertEqual(adapter._delegate._cwd, cwd)
                     self.assertEqual(adapter._delegate._write_bank_ids, [identity['bank'], 'writable'])
                     self.assertEqual(adapter._delegate._build_recall_bank_ids(), [identity['bank'], 'writable', 'readonly'])
                     self.assertEqual(adapter._delegate._recall_max_input_chars, 2000)
+                    if native_context:
+                        from hermes_cli.plugins import PluginContext
+                        loaded = manager._plugins['hindsight-workspace']
+                        ctx = PluginContext(loaded.manifest, manager)
+                        agent._memory_manager = memory
+                        def capture():
+                            return loaded.module.capture_target(ctx=ctx, agent=agent,
+                                session_id=agent.session_id, profile=kwargs['agent_identity'],
+                                home=home, settings=settings, redact=lambda text: text)
+                        target = capture()
+                        self.assertIsNotNone(target, 'native project hook skipped the context-bound provider')
+                        self.assertEqual(target.cwd, Path(cwd))
+                        self.assertEqual(target.bank, identity['bank'])
+                        with scoped_session_key('agent:main:local:another-session'):
+                            self.assertIsNone(capture(), 'another route reused the bound collector')
                     if create_cache:
                         # get_code uses the real loader's cache writer without executing another module.
                         with patch.object(sys, 'dont_write_bytecode', False):
@@ -100,9 +156,14 @@ class NativeProviderTests(unittest.TestCase):
                         self.assertTrue(list((native / '__pycache__').glob('*.pyc')))
                     self.assertEqual(adapter.get_tool_schemas(), adapter._delegate.get_tool_schemas())
                     self.assertEqual(Path(__import__('sys').modules[type(adapter._delegate).__module__].__file__).parent, native)
+                    if native_context:
+                        scope.close()
+                        with self.assertNoLogs('agent.memory_manager', level='WARNING'):
+                            memory.on_session_end([{'role': 'user', 'content': 'synthetic evicted session'}])
                     memory.shutdown_all()
                     manager.unload()
                 after = {name: hashlib.sha256((native / name).read_bytes()).hexdigest() for name in before}
                 self.assertEqual(before, after)
             finally:
+                scope.close()
                 reset_hermes_home_override(token)
