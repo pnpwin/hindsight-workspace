@@ -7,7 +7,7 @@ from pathlib import Path
 import subprocess
 import sys
 import unittest
-import policy
+from hindsight_workspace import policy
 import test_workspace as fixture
 
 
@@ -17,7 +17,7 @@ class SharedIngestionTests(unittest.TestCase):
         self.addCleanup(base.doCleanups)
         base.setUp()
         self.root, self.repo, self.api = base.root, base.repo, base.api
-        self.route = importlib.import_module('survey_route')
+        self.route = importlib.import_module('hindsight_workspace.survey_route')
         self.assertTrue(callable(getattr(self.route, 'build_target', None)), 'common target builder missing')
         self.owner = self.root / 'owner/hindsight/config.json'
         self.owner.parent.mkdir(parents=True)
@@ -47,15 +47,14 @@ class SharedIngestionTests(unittest.TestCase):
         import shutil
         from types import SimpleNamespace
         from unittest.mock import patch
-        spec = importlib.util.spec_from_file_location('workspace_cli_probe', Path(__file__).resolve().parents[1] / 'cli.py')
-        cli = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(cli)
-        from codex_memory import Session
+        from hindsight_workspace import cli
+        from hindsight_workspace.codex_memory import Session
         home = self.owner.parent.parent
         installed = home / 'plugins/hindsight-workspace'
         installed.mkdir(parents=True)
-        for name in ('__init__.py', 'policy.py', 'provider.py', 'hindsight_workspace.py', 'survey_route.py', 'plugin.yaml'):
+        for name in ('__init__.py', 'plugin.yaml'):
             shutil.copy2(Path(__file__).resolve().parents[1] / name, installed / name)
+        shutil.copytree(Path(__file__).resolve().parents[1] / 'src', installed / 'src')
         (home / 'config.yaml').write_text(json.dumps({'plugins': {'enabled': ['hindsight-workspace'], 'disabled': []},
             'auxiliary': {'hindsight_workspace_survey': {'provider': 'openai', 'model': 'synthetic-survey'}}}))
         with Session(self.owner, 'codex-c').locked() as session:
@@ -88,9 +87,9 @@ class SharedIngestionTests(unittest.TestCase):
 from pathlib import Path
 sys.path.insert(0, os.environ['HERMES_SOURCE'])
 sys.path.insert(0, sys.argv[1])
-from survey_route import build_target
-from policy import load_policy, resolve_identity
-from hindsight_workspace import sync_workspace
+from hindsight_workspace.survey_route import build_target
+from hindsight_workspace.policy import load_policy, resolve_identity
+from hindsight_workspace.hindsight_workspace import sync_workspace
 owner, cwd, counter = Path(sys.argv[2]), sys.argv[3], Path(sys.argv[4])
 p = load_policy(owner)
 target = build_target(owner, resolve_identity(session_id=sys.argv[5], cwd=cwd, selected_cwd=cwd, policy=p))
@@ -102,7 +101,7 @@ def summarize(source):
 target.summarize = summarize
 print(json.dumps(sync_workspace(target)))
 '''
-        command = [sys.executable, '-B', '-c', code, str(Path(__file__).resolve().parents[1]), str(self.owner), str(self.repo), str(counter)]
+        command = [sys.executable, '-B', '-c', code, str(Path(__file__).resolve().parents[1] / 'src'), str(self.owner), str(self.repo), str(counter)]
         children = [subprocess.Popen(command + [sid], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) for sid in ('a', 'b')]
         try:
             for child in children:

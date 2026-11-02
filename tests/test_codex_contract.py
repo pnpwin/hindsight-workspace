@@ -8,14 +8,14 @@ import tempfile
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-import policy
+from hindsight_workspace import policy
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class CodexContractTests(unittest.TestCase):
     def setUp(self):
-        self.assertTrue((ROOT / 'cli.py').exists(), 'Codex shared entrypoint is missing')
+        self.assertTrue((ROOT / 'src/hindsight_workspace/cli.py').exists(), 'Codex shared entrypoint is missing')
         self.tmp = tempfile.TemporaryDirectory(dir=os.environ['TMPDIR'])
         self.addCleanup(self.tmp.cleanup)
         self.home = Path(self.tmp.name)
@@ -108,7 +108,7 @@ class CodexContractTests(unittest.TestCase):
         self.thread.join()
 
     def run_cli(self, command, payload, ok=True):
-        result = subprocess.run([sys.executable, '-B', str(ROOT / 'cli.py'), command, '--policy', str(self.owner)],
+        result = subprocess.run([sys.executable, '-B', str(ROOT / 'src/hindsight_workspace/cli.py'), command, '--policy', str(self.owner)],
             input=json.dumps(payload), text=True, capture_output=True, env=self.env, timeout=20, cwd=self.cwd)
         if ok:
             self.assertEqual(result.returncode, 0, result.stderr)
@@ -287,7 +287,7 @@ class CodexContractTests(unittest.TestCase):
         self.bind()
         event = self.event('Stop', transcript_path=str(self.transcript()))
         def run():
-            return subprocess.run([sys.executable, '-B', str(ROOT / 'cli.py'), 'hook', '--policy', str(self.owner)],
+            return subprocess.run([sys.executable, '-B', str(ROOT / 'src/hindsight_workspace/cli.py'), 'hook', '--policy', str(self.owner)],
                 input=json.dumps(event), text=True, capture_output=True, env=self.env, timeout=20)
         with ThreadPoolExecutor(max_workers=2) as pool:
             results = list(pool.map(lambda _: run(), range(2)))
@@ -408,7 +408,7 @@ class CodexContractTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_real_node_hook_and_inventory(self):
-        result = subprocess.run(['node', str(ROOT / 'codex/hooks.mjs')], input=json.dumps(self.event('SessionStart')),
+        result = subprocess.run(['node', str(ROOT / 'src/hindsight_workspace/codex/hooks.mjs')], input=json.dumps(self.event('SessionStart')),
             text=True, capture_output=True, env=self.env, timeout=20)
         self.assertEqual(result.returncode, 0, result.stderr)
         tools = self.run_cli('tools', {})['tools']

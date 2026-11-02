@@ -4,7 +4,7 @@ Shared project memory for Hermes and Codex. Use it when you switch agents in the
 
 The clients need to agree on which memory bank belongs to a project, how to save and recall conversations, and whether a project has already been indexed. This plugin gives them one workspace resolver, one policy and a shared collector. Hermes delegates dialogue memory to the unmodified official Hindsight provider; Codex uses native hooks and MCP.
 
-Release candidate: isolated tests and native installations pass. Live cross-client recall, Desktop sessions and production migration remain unverified. Do not replace a running legacy installation with these instructions.
+Source-layout candidate: isolated adapter and transport checks do not certify an installed CLI or Desktop session. Activation and production migration require separate review. Do not replace a running legacy installation with these instructions.
 
 ## How it works
 
@@ -15,7 +15,7 @@ Release candidate: isolated tests and native installations pass. Live cross-clie
 
 ## Install
 
-Requires local POSIX, Git, Node, an existing Hermes managed Python environment with its MCP SDK, the Hermes source checkout and a running Hindsight service. Install a clean official Hindsight provider at a revision accepted by `maintenance/clean_gate.py`. This package does not install runtimes or start services.
+Requires local POSIX, Git, Node, an existing Hermes managed Python environment with its MCP SDK, the Hermes source checkout and a running Hindsight service. Install a clean official Hindsight provider at a revision accepted by `src/hindsight_workspace/maintenance/clean_gate.py`. This package does not install runtimes or start services.
 
 ```sh
 hermes plugins install pnpwin/hindsight-workspace --no-enable
@@ -71,32 +71,40 @@ Secret detection is not exhaustive. Non-Git ignore files are not interpreted. HO
 
 ## Migration and maintenance
 
-Prepare reviewed configuration candidates with native client writers in an isolated home. `maintenance/migrate_shared.py` defaults to dry-run:
+Runtime code, including Codex launchers and maintenance, lives in `src/hindsight_workspace/`. The root `__init__.py` is the native Hermes loader; client manifests stay at the repository root. Existing policy, bank and durable state locations do not change.
+
+Prepare reviewed configuration candidates with native client writers in an isolated home. Run maintenance from the repository root with the existing consumer Python. `migrate_shared` defaults to dry-run:
 
 ```sh
-python maintenance/migrate_shared.py /absolute/proposal.json
-python maintenance/migrate_shared.py /absolute/reviewed-plan.json --apply --clients-stopped
-python maintenance/migrate_shared.py /absolute/receipt.json --rollback --clients-stopped
+PYTHONPATH=src "$HERMES_PYTHON" -B -m hindsight_workspace.maintenance.migrate_shared /absolute/proposal.json
+PYTHONPATH=src "$HERMES_PYTHON" -B -m hindsight_workspace.maintenance.migrate_shared /absolute/reviewed-plan.json --apply --clients-stopped
+PYTHONPATH=src "$HERMES_PYTHON" -B -m hindsight_workspace.maintenance.migrate_shared /absolute/receipt.json --rollback --clients-stopped
 ```
 
-Apply and rollback require stopped clients and updaters. Writes are individually atomic, not one global transaction; rollback refuses newer writes. Backups may contain credentials and must stay private. Native managers own plugin payloads; this utility does not roll back databases, services or dependency environments. `adoption.py` verifies legacy cursors before explicit adoption without deleting receipts.
+Apply and rollback require stopped clients and updaters. Writes are individually atomic, not one global transaction; rollback refuses newer writes. Backups may contain credentials and must stay private. Native managers own plugin payloads; this utility does not roll back databases, services or dependency environments. `src/hindsight_workspace/adoption.py` verifies legacy cursors before explicit adoption without deleting receipts.
 
-Use `maintenance/clean_gate.py` with the consumer's Python and an explicit consumer roster (`--consumer-config /absolute/path`). It checks approved source, policy, configuration and local bytecode. Unknown or externally redirected caches are refused. Cache checks are limited to CPython 3.11–3.15 and 2 MB per file; unsupported formats fail closed. Keep payload writers stopped during validation/loading; the check does not protect against concurrent filesystem attackers. Integrating existing updater entrypoints remains a prerequisite for activation.
+Use `PYTHONPATH=src "$HERMES_PYTHON" -B -m hindsight_workspace.maintenance.clean_gate` with an explicit consumer roster (`--consumer-config /absolute/path`). It checks approved source, policy, configuration and local bytecode. Unknown or externally redirected caches are refused. Cache checks are limited to CPython 3.11–3.15 and 2 MB per file; unsupported formats fail closed. Keep payload writers stopped during validation/loading; the check does not protect against concurrent filesystem attackers. Integrating existing updater entrypoints remains a prerequisite for activation.
 
 ## Tests and compatibility
 
-Use an isolated HOME/HERMES_HOME, owned `TMPDIR`, no live credentials, `HERMES_SOURCE` pointing to Hermes and `HINDSIGHT_UPSTREAM` to the reviewed official provider:
+Use isolated HOME/HERMES_HOME/CODEX_HOME, an owned `TMPDIR`, no live credentials, `HERMES_SOURCE` pointing to Hermes and `HINDSIGHT_UPSTREAM` to the reviewed official provider. Run from the repository root:
 
 ```sh
-"$HERMES_PYTHON" -B -m unittest discover -s tests -v
+PYTHONPATH=src "$HERMES_PYTHON" -B -m unittest discover -s tests -v
 HINDSIGHT_WORKSPACE_PYTHON="$HERMES_PYTHON" node --test tests/test_codex_transport.mjs
 ```
 
-Offline tests cover Hermes 0.22.5, Hindsight plugin 1.2.3 and Codex 0.166.0 interfaces with synthetic HTTP/model fixtures. Public CI checks syntax and JSON only. Private Hermes API imports require compatibility checks on upgrades.
+Offline tests cover Hermes 0.22.5, Hindsight plugin 1.2.3 and Codex 0.166.0 interfaces with synthetic HTTP/model fixtures. CI checks do not certify live client sessions. Private Hermes API imports require compatibility checks on upgrades.
+
+Codex's synchronous `SessionEnd` hook has a three-second timeout. `Stop` and `SubagentStop` remain asynchronous. This bounds shutdown waiting; it does not guarantee retain delivery after process exit.
 
 Hermes gateway constructors may omit `cwd` even for a session with a selected project. The adapter accepts that case only when the native task-local cwd, active session policy, gateway route key and profile agree. It pins that binding for subsequent memory calls and project collection. Explicit invalid directories, missing context and conflicting routes are refused; process cwd and environment variables cannot supply a fallback. An explicit cwd remains supported outside a native turn.
 
 The native integration regression uses the unmodified Hermes kwargs producer, policy scope, memory manager and plugin loader, plus the clean official provider. It covers omitted cwd, project-hook capture and the upstream's inherited no-op session-end callback outside a turn. Concurrent route checks and sequential session switches are tested separately; overlapping queued retention and compression are not qualified by these tests. A passing isolated check does not certify an installed CLI/Desktop session.
+
+## Releases
+
+Releases use a manually pushed version tag followed by CI validation and publication. See [release policy](docs/releases.md).
 
 ## License
 

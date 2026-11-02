@@ -14,7 +14,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 import test_plugin as fixture
-import policy
+from hindsight_workspace import policy
 from hermes_constants import set_hermes_home_override, reset_hermes_home_override
 from plugins.memory import find_provider_dir, load_memory_provider
 from hermes_cli.plugins import get_plugin_manager
@@ -43,7 +43,7 @@ class NativeProviderTests(unittest.TestCase):
         if native_context:
             temp_root = Path.home() / '.hermes/profiles'
             temp_root.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=temp_root, prefix='acceptance-') as directory:
+        with tempfile.TemporaryDirectory(dir=temp_root, prefix='acceptance-' if native_context else 'acceptance with spaces-') as directory:
             home = Path(directory)
             upstream = Path(os.environ['HINDSIGHT_UPSTREAM'])
             native = home / 'plugins/hindsight'
@@ -52,9 +52,9 @@ class NativeProviderTests(unittest.TestCase):
             wrapper.mkdir()
             for name in ('__init__.py', 'settings.py', 'embedded.py', 'setup.py', 'templates.py', 'config_schema.py', 'plugin.yaml', 'pyproject.toml'):
                 shutil.copy2(upstream / name, native / name)
-            for name in ('__init__.py', 'policy.py', 'provider.py', 'hindsight_workspace.py', 'survey_route.py', 'plugin.yaml'):
+            for name in ('__init__.py', 'plugin.yaml'):
                 shutil.copy2(fixture.ROOT / name, wrapper / name)
-            shutil.copytree(fixture.ROOT / 'maintenance', wrapper / 'maintenance')
+            shutil.copytree(fixture.ROOT / 'src', wrapper / 'src')
             self.assertNotIn('from .workspace_bank import', (native / '__init__.py').read_text())
             self.assertFalse((native / 'workspace_bank.py').exists())
             before = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in native.iterdir()}
@@ -84,7 +84,7 @@ class NativeProviderTests(unittest.TestCase):
                     manager = get_plugin_manager()
                     manager.discover_and_load()
                     hooks = manager._hooks.get('pre_llm_call', [])
-                    self.assertTrue(any(Path(__import__('sys').modules[hook.__module__].__file__).parent == wrapper for hook in hooks), 'general native discovery did not register the project hook')
+                    self.assertTrue(any(Path(__import__('sys').modules[hook.__module__].__file__).parent == wrapper / 'src/hindsight_workspace' for hook in hooks), 'general native discovery did not register the project hook')
                     self.assertEqual(find_provider_dir('hindsight'), native)
                     if tampered_cache:
                         try:
@@ -139,7 +139,8 @@ class NativeProviderTests(unittest.TestCase):
                         ctx = PluginContext(loaded.manifest, manager)
                         agent._memory_manager = memory
                         def capture():
-                            return loaded.module.capture_target(ctx=ctx, agent=agent,
+                            runtime = sys.modules[loaded.module.register.__module__]
+                            return runtime.capture_target(ctx=ctx, agent=agent,
                                 session_id=agent.session_id, profile=kwargs['agent_identity'],
                                 home=home, settings=settings, redact=lambda text: text)
                         target = capture()

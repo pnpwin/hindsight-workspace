@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import os
-import policy
+from hindsight_workspace import policy
 
 ROOT = Path(__file__).resolve().parents[1]
 NATIVE = ROOT / 'tests/fixtures/legacy_provider'
@@ -27,7 +27,8 @@ def load(name, path, package=False):
 class PluginTests(unittest.TestCase):
     def setUp(self):
         self.assertTrue((ROOT / '__init__.py').exists(), 'native adapter is missing')
-        self.p = load('workspace_plugin_fixture', ROOT / '__init__.py', True)
+        entry = load('workspace_plugin_fixture', ROOT / '__init__.py', True)
+        self.p = sys.modules[entry.register.__module__]
         scratch = Path(os.environ.get('TMPDIR', str(ROOT / 'test-tmp')))
         scratch.mkdir(exist_ok=True)
         self.tmp = tempfile.TemporaryDirectory(dir=scratch)

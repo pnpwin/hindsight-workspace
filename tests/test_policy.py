@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 try:
-    import policy as p
+    from hindsight_workspace import policy as p
 except ModuleNotFoundError:
     p = None
 

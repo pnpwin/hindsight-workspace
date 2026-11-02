@@ -17,8 +17,8 @@ from urllib.error import HTTPError
 from urllib.parse import quote, urlencode
 import uuid
 
-from hindsight_workspace import Client, atomic_json
-from policy import bank_sets, canonical_path, load_policy, resolve_identity, validate_binding
+from .hindsight_workspace import Client, atomic_json
+from .policy import bank_sets, canonical_path, load_policy, resolve_identity, validate_binding
 
 TOOL_ARGS = {
     'hindsight_sync_status': (), 'hindsight_diagnose': (),
@@ -232,7 +232,7 @@ class Session:
         if name == 'hindsight_diagnose':
             return self.state['identity']
         if name == 'hindsight_sync_status':
-            from hindsight_workspace import Target, DOC_GIT, DOC_SURVEY, git_snapshot, survey_due
+            from .hindsight_workspace import Target, DOC_GIT, DOC_SURVEY, git_snapshot, survey_due
             identity = self.state['identity']
             target = Target(cwd=Path(identity['cwd']), bank=primary, api_url=identity['api_url'],
                             data_dir=self.owner.parent.parent / 'plugin-data/hindsight-workspace')

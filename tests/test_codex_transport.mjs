@@ -20,11 +20,11 @@ test('real MCP SDK carries threadId; sessionId is not a binding', { timeout: 250
   let child;
   try {
     for (const id of ['thread-a', 'thread-b']) {
-      const result = spawnSync('node', [join(root, 'codex/hooks.mjs')], { env, encoding: 'utf8',
+      const result = spawnSync('node', [join(root, 'src/hindsight_workspace/codex/hooks.mjs')], { env, encoding: 'utf8',
         input: JSON.stringify({ hook_event_name: 'SessionStart', session_id: id, cwd: '/synthetic/project' }), timeout: 10000 });
       assert.equal(result.status, 0, result.stderr);
     }
-    child = spawn('node', [join(root, 'codex/mcp.mjs')], { env, stdio: ['pipe', 'pipe', 'pipe'] });
+    child = spawn('node', [join(root, 'src/hindsight_workspace/codex/mcp.mjs')], { env, stdio: ['pipe', 'pipe', 'pipe'] });
     let diagnostics = '';
     child.stderr.on('data', data => diagnostics += data.toString());
     let next = 0;

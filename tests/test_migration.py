@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class MigrationTests(unittest.TestCase):
     def setUp(self):
-        path = ROOT / 'maintenance/migrate_shared.py'
+        path = ROOT / 'src/hindsight_workspace/maintenance/migrate_shared.py'
         self.assertTrue(path.exists(), 'migration dry-run/apply boundary missing')
         spec = importlib.util.spec_from_file_location('migration_test_module', path)
         assert spec is not None and spec.loader is not None
