@@ -94,6 +94,10 @@ HINDSIGHT_WORKSPACE_PYTHON="$HERMES_PYTHON" node --test tests/test_codex_transpo
 
 Offline tests cover Hermes 0.22.5, Hindsight plugin 1.2.3 and Codex 0.166.0 interfaces with synthetic HTTP/model fixtures. Public CI checks syntax and JSON only. Private Hermes API imports require compatibility checks on upgrades.
 
+Hermes gateway constructors may omit `cwd` even for a session with a selected project. The adapter accepts that case only when the native task-local cwd, active session policy, gateway route key and profile agree. It pins that binding for subsequent memory calls and project collection. Explicit invalid directories, missing context and conflicting routes are refused; process cwd and environment variables cannot supply a fallback. An explicit cwd remains supported outside a native turn.
+
+The native integration regression uses the unmodified Hermes kwargs producer, policy scope, memory manager and plugin loader, plus the clean official provider. It covers omitted cwd, project-hook capture and the upstream's inherited no-op session-end callback outside a turn. Concurrent route checks and sequential session switches are tested separately; overlapping queued retention and compression are not qualified by these tests. A passing isolated check does not certify an installed CLI/Desktop session.
+
 ## License
 
 MIT; see [LICENSE](LICENSE). This is an independent integration. `tests/fixtures/legacy_provider/settings.py` comes from [Vectorize Hindsight's Hermes integration](https://github.com/vectorize-io/hindsight/blob/d952b6e655fccab4581ee0722b51c5f103873d12/hindsight-integrations/hermes/settings.py); its copyright and MIT notice are retained. The workspace resolver fixture preserves pre-migration behavior. Hermes, Hindsight runtime/SDK and Codex are external prerequisites, not bundled runtimes.

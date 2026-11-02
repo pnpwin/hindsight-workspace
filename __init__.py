@@ -34,8 +34,13 @@ def capture_target(*, ctx, agent, session_id, profile, home, settings, redact):
         except TerminalPolicyUnavailable:
             return None
         cwd = ctx.session_cwd()
-        if not cwd or not Path(cwd).is_absolute() or agent.session_cwd != cwd:
+        if not cwd or not Path(cwd).is_absolute():
             return None
+        if agent.session_cwd is not None and agent.session_cwd != cwd:
+            return None
+        # Gateway constructors can omit cwd; the adapter independently checks
+        # the declared native route, profile and workspace for every hook.
+        provider.validate_workspace_context(session_id=session_id, cwd=cwd)
         identity = provider.workspace_identity
         validate_binding(identity, policy, session_id=session_id, cwd=cwd)
         from .survey_route import build_target

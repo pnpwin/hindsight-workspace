@@ -46,6 +46,7 @@ class PluginTests(unittest.TestCase):
         self.policy_path = self.home / 'hindsight/config.json'
         self.policy_path.write_text(__import__('json').dumps(self.settings))
         self.provider = types.SimpleNamespace(workspace_identity=identity, workspace_policy=self.settings.copy(), bound_profile='default', bound_home=self.home, policy_path=self.policy_path)
+        self.provider.validate_workspace_context = lambda **kw: None
         self.agent = types.SimpleNamespace(session_id='session-a', session_cwd=str(self.cwd), _memory_manager=types.SimpleNamespace(get_provider=lambda name: self.provider if name == 'hindsight-workspace' else None))
         self.ctx = types.SimpleNamespace(session_cwd=lambda: str(self.cwd), _manager=types.SimpleNamespace(home_path=str(self.home)))
         (self.home / 'config.yaml').write_text(__import__('json').dumps({'auxiliary': {'hindsight_workspace_survey': {'provider': 'openai', 'model': 'synthetic-survey'}}}))
@@ -74,6 +75,26 @@ class PluginTests(unittest.TestCase):
         other = self.home / 'other'
         other.mkdir()
         self.ctx.session_cwd = lambda: str(other)
+        self.assertIsNone(self.capture())
+    def test_missing_agent_cwd_uses_validated_provider_binding(self):
+        self.agent.session_cwd = None
+        calls = []
+        self.provider.validate_workspace_context = lambda **kw: calls.append(kw)
+        self.assertIsNotNone(self.capture())
+        self.assertEqual(calls, [{'session_id': 'session-a', 'cwd': str(self.cwd)}])
+    def test_missing_agent_cwd_without_valid_context_skips(self):
+        self.agent.session_cwd = None
+        del self.provider.validate_workspace_context
+        self.assertIsNone(self.capture())
+        def refused(**kwargs):
+            raise ValueError('foreign native route')
+        self.provider.validate_workspace_context = refused
+        self.assertIsNone(self.capture())
+        self.agent.session_cwd = str(self.cwd)
+        self.assertIsNone(self.capture())
+    def test_explicit_conflicting_agent_cwd_skips(self):
+        self.agent.session_cwd = str(self.home / 'other')
+        self.provider.validate_workspace_context = lambda **kw: None
         self.assertIsNone(self.capture())
     def test_same_basename_different_path_isolated(self):
         other = self.home / 'other/project'
