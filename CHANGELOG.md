@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Accept reviewed upstream `2c00b59a` and `9486680b` with the same provider sources as `34a13868`, while keeping older sources and unknown revisions separate.
 - Keep previously approved Hindsight sources working during upgrades, and bind each recorded revision to its exact source and bytecode set.
 
 ## 0.4.1

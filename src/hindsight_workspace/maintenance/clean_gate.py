@@ -15,8 +15,12 @@ from pathlib import Path
 import sys
 
 SOURCE = 'https://github.com/vectorize-io/hindsight.git#hindsight-integrations/hermes'
-REVISIONS = ('34a138684a899b6ec34175f7a2b633860466d289',
-             'd952b6e655fccab4581ee0722b51c5f103873d12', 'a5a619b5ca59c5c39e0f96be6f7a31fabd136bd5')
+CURRENT_REVISIONS = ('34a138684a899b6ec34175f7a2b633860466d289',
+                     '2c00b59ae6bb07cad45c44ac19e14ddc369fbbeb',
+                     '9486680b078420397ad1b4d5835c013808ac97f6')
+PREVIOUS_REVISIONS = ('d952b6e655fccab4581ee0722b51c5f103873d12',
+                      'a5a619b5ca59c5c39e0f96be6f7a31fabd136bd5')
+REVISIONS = CURRENT_REVISIONS + PREVIOUS_REVISIONS
 UPSTREAM = {
     '__init__.py': '1670940f55fad98e075ea7b40c5ce6503479051bcc9bbe0f0368f0d8f62fb506',
     'settings.py': 'cc922b593c99e9740bc49a1ec4e54824976307a1ce684f030f1f0d185a7dbded',
@@ -140,8 +144,8 @@ PREVIOUS_TESTS.update({
 
 def _approved_sources(root, revision=None):
     actual = {name: sha(root / name) for name in UPSTREAM}
-    for revisions, sources, tests in ((REVISIONS[:1], UPSTREAM, UPSTREAM_TESTS),
-                                       (REVISIONS[1:], PREVIOUS_UPSTREAM, PREVIOUS_TESTS)):
+    for revisions, sources, tests in ((CURRENT_REVISIONS, UPSTREAM, UPSTREAM_TESTS),
+                                       (PREVIOUS_REVISIONS, PREVIOUS_UPSTREAM, PREVIOUS_TESTS)):
         if actual == sources and (revision is None or revision in revisions):
             return {**sources, **tests}
     raise ValueError('Unknown upstream source or legacy workspace overlay')

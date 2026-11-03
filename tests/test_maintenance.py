@@ -83,9 +83,40 @@ class MaintenanceTests(unittest.TestCase):
         py_compile.compile(str(self.provider / '__init__.py'), doraise=True,
                            invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH)
         self.m.snapshot(self.home)
-        metadata['hindsight']['revision'] = '34a138684a899b6ec34175f7a2b633860466d289'
-        path.write_text(json.dumps(metadata))
+        for revision in ('34a138684a899b6ec34175f7a2b633860466d289',
+                         '2c00b59ae6bb07cad45c44ac19e14ddc369fbbeb',
+                         '9486680b078420397ad1b4d5835c013808ac97f6'):
+            with self.subTest(revision=revision):
+                metadata['hindsight']['revision'] = revision
+                path.write_text(json.dumps(metadata))
+                with self.assertRaisesRegex(ValueError, 'Unknown upstream source'):
+                    self.m.snapshot(self.home)
+
+    def test_equal_source_main_revisions_remain_accepted(self):
+        path = self.home / 'plugins/.install-metadata.json'
+        metadata = json.loads(path.read_text())
+        for revision in ('34a138684a899b6ec34175f7a2b633860466d289',
+                         '2c00b59ae6bb07cad45c44ac19e14ddc369fbbeb',
+                         '9486680b078420397ad1b4d5835c013808ac97f6'):
+            with self.subTest(revision=revision):
+                metadata['hindsight']['revision'] = revision
+                path.write_text(json.dumps(metadata))
+                try:
+                    approved = self.m.snapshot(self.home)
+                except ValueError as exc:
+                    self.fail(f'Reviewed equal-source revision was refused: {exc}')
+                self.assertEqual(approved['revision'], revision)
+                self.assertEqual(self.m.monitor(self.home, approved)['status'], 'ok')
+
+    def test_equal_sources_do_not_allow_unknown_revision(self):
+        revision = 'f' * 40
         with self.assertRaisesRegex(ValueError, 'Unknown upstream source'):
+            self.m.verify_provider(self.provider, revision=revision)
+        path = self.home / 'plugins/.install-metadata.json'
+        metadata = json.loads(path.read_text())
+        metadata['hindsight']['revision'] = revision
+        path.write_text(json.dumps(metadata))
+        with self.assertRaisesRegex(ValueError, 'Unknown upstream source/pin'):
             self.m.snapshot(self.home)
 
     def test_latest_source_cannot_claim_previous_revision(self):
