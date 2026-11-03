@@ -15,7 +15,7 @@ Source-layout candidate: isolated adapter and transport checks do not certify an
 
 ## Install
 
-Requires local POSIX, Git, Node, an existing Hermes managed Python environment with its MCP SDK, the Hermes source checkout and a running Hindsight service. Install the clean official Hindsight provider at `TESTED_REVISION` in `src/hindsight_workspace/maintenance/clean_gate.py`; `TESTED_VERSION` records its plugin version. Only this last-tested revision is accepted, not earlier revisions with equal sources. Native maintenance requires `pinned: true`. This temporary fleet-migration revision accepts client/embed SDKs from `0.10.3` through `1.2.0` so shared-PM profiles can be updated serially without conflicting exact pins. Replace it with the final exact `1.2.0` revision after every profile has crossed this bridge. Dependencies remain owned by Hermes' native package manager; the plugin does not start services or edit managed environments directly.
+Requires local POSIX, Git, Node, an existing Hermes managed Python environment with its MCP SDK, the Hermes source checkout and a running Hindsight service. Install the clean official Hindsight provider at `TESTED_REVISION` in `src/hindsight_workspace/maintenance/clean_gate.py`; `TESTED_VERSION` records its plugin version. Only this last-tested revision is accepted, not earlier revisions with equal sources. Native maintenance requires `pinned: true`. The manifest pins client/embed SDKs to `1.2.0` through Hermes' native package manager; it does not start services or edit managed environments directly.
 
 ```sh
 hermes plugins install pnpwin/hindsight-workspace --no-enable
