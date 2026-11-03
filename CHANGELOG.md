@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Keep previously approved Hindsight sources working during upgrades, and bind each recorded revision to its exact source and bytecode set.
+
 ## 0.4.1
 
 Accept upstream `34a13868` (vectorize-io/hindsight main) as the approved provider revision.

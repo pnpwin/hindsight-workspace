@@ -15,8 +15,8 @@ from pathlib import Path
 import sys
 
 SOURCE = 'https://github.com/vectorize-io/hindsight.git#hindsight-integrations/hermes'
-REVISIONS = ('34a138684a899b6ec34175f7a2b633860466d289', 'd952b6e655fccab4581ee0722b51c5f103873d12',
-             'a5a619b5ca59c5c39e0f96be6f7a31fabd136bd5')
+REVISIONS = ('34a138684a899b6ec34175f7a2b633860466d289',
+             'd952b6e655fccab4581ee0722b51c5f103873d12', 'a5a619b5ca59c5c39e0f96be6f7a31fabd136bd5')
 UPSTREAM = {
     '__init__.py': '1670940f55fad98e075ea7b40c5ce6503479051bcc9bbe0f0368f0d8f62fb506',
     'settings.py': 'cc922b593c99e9740bc49a1ec4e54824976307a1ce684f030f1f0d185a7dbded',
@@ -38,8 +38,8 @@ UPSTREAM_TESTS = {
     'tests/test_env_settings.py': '78c9527006e7edc8354cfd09e83058f4a94a9b93b34f6b670d257e483ddc4b93',
     'tests/test_provider.py': '6d5737e6e120e7c5cd183f0c16468dc11c01327fba70afd30aed97dc36eb7291',
     'tests/test_local_runtime.py': '1270592df118d0ddd47fdfc7a03b29ac3b5b6b883e4af1f6af550d89b58055ab',
-    'tests/test_multibank.py': 'c93d5ce596a75d8c8792afa789907b2d4cecd04dff9d7cb628204f28867978ea',
     'tests/test_retain_durability.py': 'bbf4a90867b74e3ffde5a651d91833eaec74c636aa0170721befd0a883c3ba47',
+    'tests/test_multibank.py': 'c93d5ce596a75d8c8792afa789907b2d4cecd04dff9d7cb628204f28867978ea',
 }
 
 
@@ -128,9 +128,29 @@ def _bytecode_fingerprint(data):
     return result
 
 
-def verify_bytecode(root, path):
+PREVIOUS_UPSTREAM = {**UPSTREAM,
+    '__init__.py': '1b1436b80e271be8915a743e696fd63e590ab0938ffff5fb581fb1882cf1a10a',
+    'embedded.py': 'f8abd9a1ae70259524eb2d58c85335f14171f0974141e57313fe2192fda31a48'}
+PREVIOUS_TESTS = {name: digest for name, digest in UPSTREAM_TESTS.items()
+                  if name != 'tests/test_retain_durability.py'}
+PREVIOUS_TESTS.update({
+    'tests/test_provider.py': '5fae677c59721e9ccd37e7f1de50d9790a3cefde1021071d229ebbf20a3e07a8',
+    'tests/test_local_runtime.py': '316ca9e591b98ce933c5974307354b8f30a3dc10298022ce0f100c063537fa66'})
+
+
+def _approved_sources(root, revision=None):
+    actual = {name: sha(root / name) for name in UPSTREAM}
+    for revisions, sources, tests in ((REVISIONS[:1], UPSTREAM, UPSTREAM_TESTS),
+                                       (REVISIONS[1:], PREVIOUS_UPSTREAM, PREVIOUS_TESTS)):
+        if actual == sources and (revision is None or revision in revisions):
+            return {**sources, **tests}
+    raise ValueError('Unknown upstream source or legacy workspace overlay')
+
+
+def verify_bytecode(root, path, *, approved_sources=None):
     source = Path(importlib.util.source_from_cache(str(path)))
-    approved = {**UPSTREAM, **UPSTREAM_TESTS}.get(source.relative_to(root).as_posix())
+    approved = (approved_sources if approved_sources is not None else _approved_sources(root)).get(
+        source.relative_to(root).as_posix())
     if approved is None or sha(source) != approved:
         raise ValueError('Unknown bytecode source')
     filename = str(source)
@@ -148,22 +168,21 @@ def verify_bytecode(root, path):
         raise ValueError('Unapproved bytecode differs from approved source')
 
 
-def verify_provider(root):
+def verify_provider(root, *, revision=None):
     if sys.pycache_prefix is not None:
         raise ValueError('External cache prefix is not approved; use the native local cache layout')
     root = Path(root)
-    actual = {name: sha(root / name) for name in UPSTREAM}
-    if actual != UPSTREAM:
-        raise ValueError('Unknown upstream source or legacy workspace overlay')
+    approved_sources = _approved_sources(root, revision)
+    actual = {name: approved_sources[name] for name in UPSTREAM}
     for path in root.rglob('*'):
         name = path.relative_to(root).as_posix()
         if path.is_symlink():
             raise ValueError('Symlink in approved provider tree')
         if path.is_file() and path.suffix in {'.py', '.pyc', '.pyo', '.so', '.pyd', '.dylib'}:
             if path.suffix == '.pyc' and path.parent.name == '__pycache__':
-                verify_bytecode(root, path)
+                verify_bytecode(root, path, approved_sources=approved_sources)
                 continue
-            if name not in UPSTREAM and UPSTREAM_TESTS.get(name) != sha(path):
+            if approved_sources.get(name) != sha(path):
                 raise ValueError('Unknown importable upstream source')
             actual[name] = sha(path)
     return actual
@@ -178,7 +197,7 @@ def snapshot(home, *, consumers=()):
     if record.get('source') != SOURCE or record.get('revision') not in REVISIONS or record.get('pinned') is not True:
         raise ValueError('Unknown upstream source/pin')
     provider = home / 'plugins/hindsight'
-    inventory = verify_provider(provider)
+    inventory = verify_provider(provider, revision=record['revision'])
     adapter = home / 'plugins/hindsight-workspace'
     files = [p for p in adapter.rglob('*') if p.is_file() and not set(p.relative_to(adapter).parts) & {'.git', '__pycache__'}]
     if not REQUIRED <= {p.relative_to(adapter).as_posix() for p in files}:

@@ -70,6 +70,32 @@ class MaintenanceTests(unittest.TestCase):
                     else:
                         path.write_bytes(old)
 
+    @unittest.skipUnless(os.environ.get('HINDSIGHT_PREVIOUS_UPSTREAM'), 'previous clean provider not supplied')
+    def test_previous_clean_revision_remains_accepted(self):
+        shutil.rmtree(self.provider)
+        shutil.copytree(os.environ['HINDSIGHT_PREVIOUS_UPSTREAM'], self.provider,
+                        ignore=shutil.ignore_patterns('__pycache__', '.git', '.pytest_cache'))
+        path = self.home / 'plugins/.install-metadata.json'
+        metadata = json.loads(path.read_text())
+        metadata['hindsight']['revision'] = 'a5a619b5ca59c5c39e0f96be6f7a31fabd136bd5'
+        path.write_text(json.dumps(metadata))
+        self.m.snapshot(self.home)
+        py_compile.compile(str(self.provider / '__init__.py'), doraise=True,
+                           invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH)
+        self.m.snapshot(self.home)
+        metadata['hindsight']['revision'] = '34a138684a899b6ec34175f7a2b633860466d289'
+        path.write_text(json.dumps(metadata))
+        with self.assertRaisesRegex(ValueError, 'Unknown upstream source'):
+            self.m.snapshot(self.home)
+
+    def test_latest_source_cannot_claim_previous_revision(self):
+        path = self.home / 'plugins/.install-metadata.json'
+        metadata = json.loads(path.read_text())
+        metadata['hindsight']['revision'] = 'a5a619b5ca59c5c39e0f96be6f7a31fabd136bd5'
+        path.write_text(json.dumps(metadata))
+        with self.assertRaisesRegex(ValueError, 'Unknown upstream source'):
+            self.m.snapshot(self.home)
+
     def test_unchecked_bytecode_cannot_replace_approved_source(self):
         source = self.provider / 'settings.py'
         approved = source.read_bytes()
