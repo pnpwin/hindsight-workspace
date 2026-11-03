@@ -75,7 +75,7 @@ async def serve(owner):
         except Exception as exc:
             return types.CallToolResult(content=[types.TextContent(type='text', text='Workspace memory refused: ' + type(exc).__name__)], is_error=True)
 
-    server = Server('hindsight-workspace', version='0.4.0', on_list_tools=list_tools, on_call_tool=call_tool)
+    server = Server('hindsight-workspace', version='0.4.1', on_list_tools=list_tools, on_call_tool=call_tool)
     async with stdio_server() as (read, write):
         await server.run(read, write, server.create_initialization_options())
 

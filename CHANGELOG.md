@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1
+
+Accept upstream `34a13868` (vectorize-io/hindsight main) as the approved provider revision.
+
+- Refresh the clean-gate hashes for `__init__.py`, `embedded.py` and the upstream test modules.
+- Upstream changes are retain-durability fixes, the managed-uvx path and a keyless local LLM key; no public plugin API was removed.
+
 ## 0.4.0
 
 Prepared candidate; GitHub publication and installed-client acceptance are separate gates.

@@ -13,7 +13,7 @@ class PackagingTests(unittest.TestCase):
     def test_native_manifests_and_async_collector_are_present(self):
         self.assertTrue((ROOT / '.codex-plugin/plugin.json').exists(), 'Codex marketplace manifest missing')
         manifest = json.loads((ROOT / '.codex-plugin/plugin.json').read_text())
-        self.assertEqual(manifest['version'], '0.4.0')
+        self.assertEqual(manifest['version'], '0.4.1')
         hook_path = manifest['hooks']
         hooks = json.loads((ROOT / hook_path).read_text())['hooks']
         for event in ('SessionStart', 'SubagentStart', 'UserPromptSubmit', 'Stop', 'SubagentStop', 'SessionEnd'):

@@ -15,11 +15,12 @@ from pathlib import Path
 import sys
 
 SOURCE = 'https://github.com/vectorize-io/hindsight.git#hindsight-integrations/hermes'
-REVISIONS = ('d952b6e655fccab4581ee0722b51c5f103873d12', 'a5a619b5ca59c5c39e0f96be6f7a31fabd136bd5')
+REVISIONS = ('34a138684a899b6ec34175f7a2b633860466d289', 'd952b6e655fccab4581ee0722b51c5f103873d12',
+             'a5a619b5ca59c5c39e0f96be6f7a31fabd136bd5')
 UPSTREAM = {
-    '__init__.py': '1b1436b80e271be8915a743e696fd63e590ab0938ffff5fb581fb1882cf1a10a',
+    '__init__.py': '1670940f55fad98e075ea7b40c5ce6503479051bcc9bbe0f0368f0d8f62fb506',
     'settings.py': 'cc922b593c99e9740bc49a1ec4e54824976307a1ce684f030f1f0d185a7dbded',
-    'embedded.py': 'f8abd9a1ae70259524eb2d58c85335f14171f0974141e57313fe2192fda31a48',
+    'embedded.py': 'b7c015fea043c043ea43e3c9404542bd7a7b535013f0c826576df4a33423cec6',
     'setup.py': 'a592e2e5e31b598e30facb96311356075eb7469880b525f6444b720eb1441501',
     'templates.py': 'eac05ef641b5c8fa9610b9b959f32db8f340e1423d5363ebc88b601cb84b600e',
     'config_schema.py': '4d53c720aa7c129b5640d7c08ce67482ff21ce81c90d7bde1bc052ad90eeed1d',
@@ -35,9 +36,10 @@ UPSTREAM_TESTS = {
     'tests/conftest.py': '80387f0ba25b87b600845bae8d4372595ea3a7a8dcdafc9ba1925a24b1e75857',
     'tests/test_settings.py': '576381d48af1e2c64b275ba827c695182aa4164c5fe2b777326182e64bd399d0',
     'tests/test_env_settings.py': '78c9527006e7edc8354cfd09e83058f4a94a9b93b34f6b670d257e483ddc4b93',
-    'tests/test_provider.py': '5fae677c59721e9ccd37e7f1de50d9790a3cefde1021071d229ebbf20a3e07a8',
-    'tests/test_local_runtime.py': '316ca9e591b98ce933c5974307354b8f30a3dc10298022ce0f100c063537fa66',
+    'tests/test_provider.py': '6d5737e6e120e7c5cd183f0c16468dc11c01327fba70afd30aed97dc36eb7291',
+    'tests/test_local_runtime.py': '1270592df118d0ddd47fdfc7a03b29ac3b5b6b883e4af1f6af550d89b58055ab',
     'tests/test_multibank.py': 'c93d5ce596a75d8c8792afa789907b2d4cecd04dff9d7cb628204f28867978ea',
+    'tests/test_retain_durability.py': 'bbf4a90867b74e3ffde5a651d91833eaec74c636aa0170721befd0a883c3ba47',
 }
 
 

@@ -1,6 +1,6 @@
 {
   "name": "hindsight-workspace",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Shared workspace memory, policy and bounded project ingestion for Hermes and Codex.",
   "mcpServers": "./mcp.json",
   "hooks": "./src/hindsight_workspace/codex/hooks.json"
