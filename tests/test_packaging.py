@@ -15,7 +15,7 @@ class PackagingTests(unittest.TestCase):
         manifest = yaml.safe_load((ROOT / 'plugin.yaml').read_text())
         self.assertNotEqual(manifest.get('python_runtime'), 'external')
         self.assertEqual(manifest['python_dependencies'],
-                         ['hindsight-client==0.10.3', 'hindsight-embed==0.10.3'])
+                         ['hindsight-client>=0.10.3,<=1.2.0', 'hindsight-embed>=0.10.3,<=1.2.0'])
 
     def test_native_manifests_and_async_collector_are_present(self):
         self.assertTrue((ROOT / '.codex-plugin/plugin.json').exists(), 'Codex marketplace manifest missing')

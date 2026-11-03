@@ -4,8 +4,8 @@ description: Shared workspace memory, policy and bounded project ingestion for H
 author: Local Hermes integration
 kind: standalone
 python_dependencies:
-  - hindsight-client==0.10.3
-  - hindsight-embed==0.10.3
+  - hindsight-client>=0.10.3,<=1.2.0
+  - hindsight-embed>=0.10.3,<=1.2.0
 requires_hermes: ">=0.22.5"
 provides_hooks:
   - pre_llm_call
