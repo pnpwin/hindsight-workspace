@@ -14,6 +14,17 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class SinglePinTests(unittest.TestCase):
+    def test_last_tested_provider_is_accepted(self):
+        from hindsight_workspace.maintenance import clean_gate
+        root = Path(os.environ['HINDSIGHT_UPSTREAM'])
+        try:
+            clean_gate.verify_provider(root, revision='f14cc1eb5624b0374cb4d82768eb2e0b9c21ae24')
+        except ValueError as exc:
+            self.fail(f'Last-tested provider was refused: {exc}')
+        self.assertIn(f'version: {clean_gate.TESTED_VERSION}', (root / 'plugin.yaml').read_text().splitlines())
+
+
 class MaintenanceTests(unittest.TestCase):
     def setUp(self):
         path = ROOT / 'src/hindsight_workspace/maintenance/clean_gate.py'
@@ -34,7 +45,7 @@ class MaintenanceTests(unittest.TestCase):
         (self.home / 'hindsight-workspace').mkdir()
         (self.home / 'hindsight-workspace/config.json').write_text(json.dumps({'policy_path': str(self.home / 'hindsight/config.json')}))
         (self.home / 'config.yaml').write_text('{}')
-        metadata = {'hindsight': {'source': self.m.SOURCE, 'revision': self.m.REVISIONS[0], 'pinned': True}}
+        metadata = {'hindsight': {'source': self.m.SOURCE, 'revision': self.m.TESTED_REVISION, 'pinned': True}}
         (self.home / 'plugins/.install-metadata.json').write_text(json.dumps(metadata))
         self.approved = self.m.snapshot(self.home)
 
@@ -70,43 +81,21 @@ class MaintenanceTests(unittest.TestCase):
                     else:
                         path.write_bytes(old)
 
-    @unittest.skipUnless(os.environ.get('HINDSIGHT_PREVIOUS_UPSTREAM'), 'previous clean provider not supplied')
-    def test_previous_clean_revision_remains_accepted(self):
-        shutil.rmtree(self.provider)
-        shutil.copytree(os.environ['HINDSIGHT_PREVIOUS_UPSTREAM'], self.provider,
-                        ignore=shutil.ignore_patterns('__pycache__', '.git', '.pytest_cache'))
+    def test_historical_revisions_are_rejected_even_with_tested_sources(self):
         path = self.home / 'plugins/.install-metadata.json'
         metadata = json.loads(path.read_text())
-        metadata['hindsight']['revision'] = 'a5a619b5ca59c5c39e0f96be6f7a31fabd136bd5'
-        path.write_text(json.dumps(metadata))
-        self.m.snapshot(self.home)
-        py_compile.compile(str(self.provider / '__init__.py'), doraise=True,
-                           invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH)
-        self.m.snapshot(self.home)
-        for revision in ('34a138684a899b6ec34175f7a2b633860466d289',
+        for revision in ('d952b6e655fccab4581ee0722b51c5f103873d12',
+                         'a5a619b5ca59c5c39e0f96be6f7a31fabd136bd5',
+                         '34a138684a899b6ec34175f7a2b633860466d289',
                          '2c00b59ae6bb07cad45c44ac19e14ddc369fbbeb',
                          '9486680b078420397ad1b4d5835c013808ac97f6'):
             with self.subTest(revision=revision):
                 metadata['hindsight']['revision'] = revision
                 path.write_text(json.dumps(metadata))
-                with self.assertRaisesRegex(ValueError, 'Unknown upstream source'):
+                with self.assertRaisesRegex(ValueError, 'Unknown upstream source/pin'):
                     self.m.snapshot(self.home)
-
-    def test_equal_source_main_revisions_remain_accepted(self):
-        path = self.home / 'plugins/.install-metadata.json'
-        metadata = json.loads(path.read_text())
-        for revision in ('34a138684a899b6ec34175f7a2b633860466d289',
-                         '2c00b59ae6bb07cad45c44ac19e14ddc369fbbeb',
-                         '9486680b078420397ad1b4d5835c013808ac97f6'):
-            with self.subTest(revision=revision):
-                metadata['hindsight']['revision'] = revision
-                path.write_text(json.dumps(metadata))
-                try:
-                    approved = self.m.snapshot(self.home)
-                except ValueError as exc:
-                    self.fail(f'Reviewed equal-source revision was refused: {exc}')
-                self.assertEqual(approved['revision'], revision)
-                self.assertEqual(self.m.monitor(self.home, approved)['status'], 'ok')
+                with self.assertRaisesRegex(ValueError, 'Unknown upstream source'):
+                    self.m.verify_provider(self.provider, revision=revision)
 
     def test_equal_sources_do_not_allow_unknown_revision(self):
         revision = 'f' * 40
@@ -119,13 +108,21 @@ class MaintenanceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Unknown upstream source/pin'):
             self.m.snapshot(self.home)
 
-    def test_latest_source_cannot_claim_previous_revision(self):
+    def test_pin_requires_exact_source_and_boolean_true(self):
         path = self.home / 'plugins/.install-metadata.json'
         metadata = json.loads(path.read_text())
-        metadata['hindsight']['revision'] = 'a5a619b5ca59c5c39e0f96be6f7a31fabd136bd5'
-        path.write_text(json.dumps(metadata))
-        with self.assertRaisesRegex(ValueError, 'Unknown upstream source'):
-            self.m.snapshot(self.home)
+        for field, value in (('source', 'https://example.invalid/hindsight'),
+                             ('pinned', False), ('pinned', 1), ('pinned', 'true'), ('pinned', None)):
+            with self.subTest(field=field, value=value):
+                record = {**metadata['hindsight'], field: value}
+                path.write_text(json.dumps({'hindsight': record}))
+                with self.assertRaisesRegex(ValueError, 'Unknown upstream source/pin'):
+                    self.m.snapshot(self.home)
+
+    def test_provider_symlink_is_rejected(self):
+        (self.provider / 'shadow.py').symlink_to(self.provider / 'settings.py')
+        with self.assertRaisesRegex(ValueError, 'Symlink'):
+            self.m.verify_provider(self.provider)
 
     def test_unchecked_bytecode_cannot_replace_approved_source(self):
         source = self.provider / 'settings.py'

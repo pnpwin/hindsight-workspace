@@ -43,6 +43,7 @@ test('real MCP SDK carries threadId; sessionId is not a binding', { timeout: 250
     });
     const initialized = await request('initialize', { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'synthetic-codex', version: '1' } });
     assert.ok(initialized.result, JSON.stringify(initialized) + diagnostics);
+    assert.equal(initialized.result.serverInfo.version, '0.4.1');
     child.stdin.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' }) + '\n');
     const listed = await request('tools/list', {});
     assert.equal(listed.result?.tools.length, 9, JSON.stringify(listed) + diagnostics);

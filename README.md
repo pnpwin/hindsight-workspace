@@ -15,7 +15,7 @@ Source-layout candidate: isolated adapter and transport checks do not certify an
 
 ## Install
 
-Requires local POSIX, Git, Node, an existing Hermes managed Python environment with its MCP SDK, the Hermes source checkout and a running Hindsight service. Install a clean official Hindsight provider at a revision accepted by `src/hindsight_workspace/maintenance/clean_gate.py`. This package does not install runtimes or start services.
+Requires local POSIX, Git, Node, an existing Hermes managed Python environment with its MCP SDK, the Hermes source checkout and a running Hindsight service. Install the clean official Hindsight provider at `TESTED_REVISION` in `src/hindsight_workspace/maintenance/clean_gate.py`; `TESTED_VERSION` records its plugin version. Only this last-tested revision is accepted, not earlier revisions with equal sources. Native maintenance requires `pinned: true`. The manifest pins client/embed SDKs to `0.10.3` through Hermes' native package manager; it does not start services or edit managed environments directly.
 
 ```sh
 hermes plugins install pnpwin/hindsight-workspace --no-enable
@@ -87,14 +87,14 @@ Use `PYTHONPATH=src "$HERMES_PYTHON" -B -m hindsight_workspace.maintenance.clean
 
 ## Tests and compatibility
 
-Use isolated HOME/HERMES_HOME/CODEX_HOME, an owned `TMPDIR`, no live credentials, `HERMES_SOURCE` pointing to Hermes and `HINDSIGHT_UPSTREAM` to the reviewed official provider. Run from the repository root:
+Use isolated HOME/HERMES_HOME/CODEX_HOME, an owned `TMPDIR`, no live credentials, `HERMES_SOURCE` pointing to Hermes and `HINDSIGHT_UPSTREAM` to the reviewed official provider. Set `HERMES_HOME` to the isolated `$HOME/.hermes`, with no committed test runtime, and export `HERMES_DISABLE_LAZY_INSTALLS=1 UV_OFFLINE=1` so importing Hermes cannot provision dependencies. Run from the repository root:
 
 ```sh
 PYTHONPATH=src "$HERMES_PYTHON" -B -m unittest discover -s tests -v
 HINDSIGHT_WORKSPACE_PYTHON="$HERMES_PYTHON" node --test tests/test_codex_transport.mjs
 ```
 
-Offline tests cover Hermes 0.22.5, Hindsight plugin 1.2.3 and Codex 0.166.0 interfaces with synthetic HTTP/model fixtures. CI checks do not certify live client sessions. Private Hermes API imports require compatibility checks on upgrades.
+Offline tests cover Hermes 0.22.5, the last-tested Hindsight provider and Codex 0.166.0 interfaces with synthetic HTTP/model fixtures. CI checks do not certify live client sessions. Private Hermes API imports require checks on upgrades.
 
 Codex's synchronous `SessionEnd` hook has a three-second timeout. `Stop` and `SubagentStop` remain asynchronous. This bounds shutdown waiting; it does not guarantee retain delivery after process exit.
 
@@ -102,9 +102,9 @@ Hermes gateway constructors may omit `cwd` even for a session with a selected pr
 
 The native integration regression uses the unmodified Hermes kwargs producer, policy scope, memory manager and plugin loader, plus the clean official provider. It covers omitted cwd, project-hook capture and the upstream's inherited no-op session-end callback outside a turn. Concurrent route checks and sequential session switches are tested separately; overlapping queued retention and compression are not qualified by these tests. A passing isolated check does not certify an installed CLI/Desktop session.
 
-## Releases
+## Updating the tested provider
 
-Releases use a manually pushed version tag followed by CI validation and publication. See [release policy](docs/releases.md).
+After offline checks, replace `TESTED_REVISION`, `TESTED_VERSION` and the source/test hashes in the clean gate together. There is no compatibility history, release tag or version-bump workflow. Required client manifests and the MCP declaration retain our package identity `0.4.1`; this is separate from the official provider version. An upstream pin can be set with the native manager's `--ref` option.
 
 ## License
 

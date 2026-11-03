@@ -10,10 +10,18 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class PackagingTests(unittest.TestCase):
+    def test_native_pm_owns_the_tested_sdk_pins(self):
+        import yaml
+        manifest = yaml.safe_load((ROOT / 'plugin.yaml').read_text())
+        self.assertNotEqual(manifest.get('python_runtime'), 'external')
+        self.assertEqual(manifest['python_dependencies'],
+                         ['hindsight-client==0.10.3', 'hindsight-embed==0.10.3'])
+
     def test_native_manifests_and_async_collector_are_present(self):
         self.assertTrue((ROOT / '.codex-plugin/plugin.json').exists(), 'Codex marketplace manifest missing')
         manifest = json.loads((ROOT / '.codex-plugin/plugin.json').read_text())
         self.assertEqual(manifest['version'], '0.4.1')
+        self.assertIn('version: "0.4.1"', (ROOT / 'plugin.yaml').read_text().splitlines())
         hook_path = manifest['hooks']
         hooks = json.loads((ROOT / hook_path).read_text())['hooks']
         for event in ('SessionStart', 'SubagentStart', 'UserPromptSubmit', 'Stop', 'SubagentStop', 'SessionEnd'):

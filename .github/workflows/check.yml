@@ -3,7 +3,7 @@ on:
   push:
   pull_request:
   workflow_dispatch:
-  workflow_call:
+
 # Fork checks receive read access only; no event text is interpolated into shell commands.
 permissions:
   contents: read
@@ -31,7 +31,3 @@ jobs:
               elif path.suffix == '.mjs':
                   subprocess.run(['node', '--check', str(path)], check=True)
           PY
-      - name: Version and marketplace agreement
-        run: python3 -B scripts/check_release.py
-      - name: Release contract regressions
-        run: python3 -B scripts/test_release.py -v

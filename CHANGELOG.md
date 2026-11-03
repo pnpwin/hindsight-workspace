@@ -2,8 +2,8 @@
 
 ## Unreleased
 
-- Accept reviewed upstream `2c00b59a` and `9486680b` with the same provider sources as `34a13868`, while keeping older sources and unknown revisions separate.
-- Keep previously approved Hindsight sources working during upgrades, and bind each recorded revision to its exact source and bytecode set.
+- Keep only the last-tested official provider revision/version and exact source/test hashes; reject historical revisions.
+- Remove the manual release/tag/version-bump workflow; retain required package identity `0.4.1`.
 
 ## 0.4.1
 

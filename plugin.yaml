@@ -3,7 +3,9 @@ version: "0.4.1"
 description: Shared workspace memory, policy and bounded project ingestion for Hermes and Codex.
 author: Local Hermes integration
 kind: standalone
-python_runtime: external
+python_dependencies:
+  - hindsight-client==0.10.3
+  - hindsight-embed==0.10.3
 requires_hermes: ">=0.22.5"
 provides_hooks:
   - pre_llm_call

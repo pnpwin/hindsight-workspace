@@ -15,21 +15,17 @@ from pathlib import Path
 import sys
 
 SOURCE = 'https://github.com/vectorize-io/hindsight.git#hindsight-integrations/hermes'
-CURRENT_REVISIONS = ('34a138684a899b6ec34175f7a2b633860466d289',
-                     '2c00b59ae6bb07cad45c44ac19e14ddc369fbbeb',
-                     '9486680b078420397ad1b4d5835c013808ac97f6')
-PREVIOUS_REVISIONS = ('d952b6e655fccab4581ee0722b51c5f103873d12',
-                      'a5a619b5ca59c5c39e0f96be6f7a31fabd136bd5')
-REVISIONS = CURRENT_REVISIONS + PREVIOUS_REVISIONS
+TESTED_REVISION = 'f14cc1eb5624b0374cb4d82768eb2e0b9c21ae24'
+TESTED_VERSION = '1.2.4'
 UPSTREAM = {
-    '__init__.py': '1670940f55fad98e075ea7b40c5ce6503479051bcc9bbe0f0368f0d8f62fb506',
+    '__init__.py': '02fa1e11c336d256897f1c9931b77bc30cf5a874eb34e98e9c810892880b6398',
     'settings.py': 'cc922b593c99e9740bc49a1ec4e54824976307a1ce684f030f1f0d185a7dbded',
-    'embedded.py': 'b7c015fea043c043ea43e3c9404542bd7a7b535013f0c826576df4a33423cec6',
+    'embedded.py': '3a62d0ab7e67d0536a394d10982a217aec93d70158e49d946d579371bf3933ff',
     'setup.py': 'a592e2e5e31b598e30facb96311356075eb7469880b525f6444b720eb1441501',
     'templates.py': 'eac05ef641b5c8fa9610b9b959f32db8f340e1423d5363ebc88b601cb84b600e',
     'config_schema.py': '4d53c720aa7c129b5640d7c08ce67482ff21ce81c90d7bde1bc052ad90eeed1d',
-    'pyproject.toml': 'ba9ae36f06f9475c3b70d84e8fced795539ca56b7a592fdf8fc9beddc3236602',
-    'plugin.yaml': 'f46da374c184400ed70a12ce61529416134b3575d4bec71364bb4f98bcf5a809',
+    'pyproject.toml': 'f854e805c685fae9e94f573858114e1a4b84c2743c38bef5504e0a948a58af0e',
+    'plugin.yaml': 'e113271b50b63e0e163d129ac6efd939e0333044f2433d6a8c594d1277437455',
 }
 REQUIRED = {'__init__.py', 'plugin.yaml', *(f'src/hindsight_workspace/{name}' for name in (
     '__init__.py', 'hermes.py', 'provider.py', 'policy.py', 'hindsight_workspace.py',
@@ -40,8 +36,8 @@ UPSTREAM_TESTS = {
     'tests/conftest.py': '80387f0ba25b87b600845bae8d4372595ea3a7a8dcdafc9ba1925a24b1e75857',
     'tests/test_settings.py': '576381d48af1e2c64b275ba827c695182aa4164c5fe2b777326182e64bd399d0',
     'tests/test_env_settings.py': '78c9527006e7edc8354cfd09e83058f4a94a9b93b34f6b670d257e483ddc4b93',
-    'tests/test_provider.py': '6d5737e6e120e7c5cd183f0c16468dc11c01327fba70afd30aed97dc36eb7291',
-    'tests/test_local_runtime.py': '1270592df118d0ddd47fdfc7a03b29ac3b5b6b883e4af1f6af550d89b58055ab',
+    'tests/test_provider.py': '239ea869e5b4b0b9a7f916165e16f45b3ead7e9add5bcd2b8a28fd551809e3c4',
+    'tests/test_local_runtime.py': '4dd0c2a10bb66af7009d9d70b5a59ee1fce51271adb762f7e761a2e51b057719',
     'tests/test_retain_durability.py': 'bbf4a90867b74e3ffde5a651d91833eaec74c636aa0170721befd0a883c3ba47',
     'tests/test_multibank.py': 'c93d5ce596a75d8c8792afa789907b2d4cecd04dff9d7cb628204f28867978ea',
 }
@@ -132,22 +128,10 @@ def _bytecode_fingerprint(data):
     return result
 
 
-PREVIOUS_UPSTREAM = {**UPSTREAM,
-    '__init__.py': '1b1436b80e271be8915a743e696fd63e590ab0938ffff5fb581fb1882cf1a10a',
-    'embedded.py': 'f8abd9a1ae70259524eb2d58c85335f14171f0974141e57313fe2192fda31a48'}
-PREVIOUS_TESTS = {name: digest for name, digest in UPSTREAM_TESTS.items()
-                  if name != 'tests/test_retain_durability.py'}
-PREVIOUS_TESTS.update({
-    'tests/test_provider.py': '5fae677c59721e9ccd37e7f1de50d9790a3cefde1021071d229ebbf20a3e07a8',
-    'tests/test_local_runtime.py': '316ca9e591b98ce933c5974307354b8f30a3dc10298022ce0f100c063537fa66'})
-
-
 def _approved_sources(root, revision=None):
     actual = {name: sha(root / name) for name in UPSTREAM}
-    for revisions, sources, tests in ((CURRENT_REVISIONS, UPSTREAM, UPSTREAM_TESTS),
-                                       (PREVIOUS_REVISIONS, PREVIOUS_UPSTREAM, PREVIOUS_TESTS)):
-        if actual == sources and (revision is None or revision in revisions):
-            return {**sources, **tests}
+    if actual == UPSTREAM and (revision is None or revision == TESTED_REVISION):
+        return {**UPSTREAM, **UPSTREAM_TESTS}
     raise ValueError('Unknown upstream source or legacy workspace overlay')
 
 
@@ -198,7 +182,7 @@ def snapshot(home, *, consumers=()):
         raise ValueError('Explicit native home required')
     metadata_path = home / 'plugins/.install-metadata.json'
     record = json.loads(metadata_path.read_text())['hindsight']
-    if record.get('source') != SOURCE or record.get('revision') not in REVISIONS or record.get('pinned') is not True:
+    if record.get('source') != SOURCE or record.get('revision') != TESTED_REVISION or record.get('pinned') is not True:
         raise ValueError('Unknown upstream source/pin')
     provider = home / 'plugins/hindsight'
     inventory = verify_provider(provider, revision=record['revision'])
